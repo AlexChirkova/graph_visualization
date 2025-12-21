@@ -311,6 +311,13 @@
             </div>
 
             <div class="toolbar-section">
+                <h3>Матрица</h3>
+                <button class="btn" id="loadMatrixBtn">Загрузить из матрицы</button>
+                <button class="btn" id="saveMatrixBtn">Сохранить в матрицу</button>
+            </div>
+
+
+            <div class="toolbar-section">
                 <h3>Файл</h3>
                 <button class="btn" id="saveBtn">Сохранить JSON</button>
                 <button class="btn" id="loadBtn">Загрузить JSON</button>
@@ -461,6 +468,28 @@
             </div>
         </div>
     </div>
+    <div id="matrixModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>Загрузить граф из матрицы весов</h2>
+            <div class="form-group">
+                <label>Введите матрицу весов (разделители: пробел/табуляция, строки через перевод строки):</label>
+                <textarea id="matrixInput" class="form-control" style="height: 250px; font-family: monospace;" placeholder="1 0 5 0&#10;0 2 3 4&#10;5 3 0 1&#10;0 4 1 0"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Метки вершин (разделены запятыми):</label>
+                <input type="text" id="vertexLabelsInput" class="form-control" placeholder="A, B, C, D">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isDirectedMatrixInput"> Ориентированный граф
+                </label>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeMatrixModal()">Отмена</button>
+                <button class="btn primary" onclick="confirmLoadMatrix()">Загрузить</button>
+            </div>
+        </div>
+    </div>
 
 
     <script>
@@ -528,6 +557,11 @@
             highlightedVertices: [],
             pendingVertexX: 0, 
             pendingVertexY: 0,
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            panOffsetX: 0,
+            panOffsetY: 0
         };
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
@@ -597,6 +631,65 @@
             const to = state.graph.vertices.get(edge.to);
 
             if (!from || !to) return;
+/*
+            // ===== ПЕТЛЯ (ребро из вершины в неё саму) =====
+            if (edge.from === edge.to) {
+                const isHighlighted = state.highlightedPath.includes(index);
+                const isSelected = state.selectedEdge === index;
+
+                ctx.strokeStyle = isHighlighted ? '#c0152f' : (isSelected ? '#1f2121' : edge.color);
+                ctx.lineWidth = isHighlighted ? 4 : (isSelected ? 3 : edge.width);
+
+                const cx = from.x;
+                const cy = from.y;
+                const r  = from.radius;
+
+                // Петля идёт над вершиной по окружности чуть большего радиуса
+                const loopRadius = r + 6;          // чуть больше вершины, почти «прилипает»
+                const startAngle = Math.PI * 0.15; // справа-снизу
+                const endAngle   = Math.PI * 0.85; // слева-снизу
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, loopRadius, startAngle, endAngle);
+                ctx.stroke();
+
+                // ===== Стрелка для ориентированной петли =====
+                if (edge.isDirected) {
+                    const angle = endAngle; // касательная в конце дуги
+                    const ax = cx + Math.cos(angle) * loopRadius;
+                    const ay = cy + Math.sin(angle) * loopRadius;
+                    const arrowSize = 10;
+
+                    ctx.fillStyle = edge.color;
+                    ctx.beginPath();
+                    ctx.moveTo(ax, ay);
+                    ctx.lineTo(
+                        ax - arrowSize * Math.cos(angle - Math.PI / 6),
+                        ay - arrowSize * Math.sin(angle - Math.PI / 6)
+                    );
+                    ctx.lineTo(
+                        ax - arrowSize * Math.cos(angle + Math.PI / 6),
+                        ay - arrowSize * Math.sin(angle + Math.PI / 6)
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Метка петли (по центру дуги, чуть выше неё)
+                if (edge.label) {
+                    const midAngle = (startAngle + endAngle) / 2;
+                    const labelRadius = loopRadius + 10;
+                    const lx = cx + Math.cos(midAngle) * labelRadius;
+                    const ly = cy + Math.sin(midAngle) * labelRadius;
+
+                    ctx.fillStyle = '#1f2121';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(edge.label, lx, ly);
+                }
+
+                return;
+            }*/
 
             const isHighlighted = state.highlightedPath.includes(index);
             const isSelected = state.selectedEdge === index;
@@ -699,6 +792,12 @@
         document.getElementById('bfsBtn').addEventListener('click', openBfsModal);
         document.getElementById('dfsBtn').addEventListener('click', openDfsModal);
 
+
+        // Матрицы
+        document.getElementById('loadMatrixBtn').addEventListener('click', loadGraphFromMatrix);
+        document.getElementById('saveMatrixBtn').addEventListener('click', saveGraphAsMatrix);
+
+
         // Файлы
         document.getElementById('saveBtn').addEventListener('click', saveGraph);
         document.getElementById('loadBtn').addEventListener('click', () => {
@@ -769,6 +868,13 @@
                 vertex.y = canvasY;
                 render();
             }
+            else if (state.isPanning) {
+                const dx = (e.clientX - state.panStartX) / state.zoom;
+                const dy = (e.clientY - state.panStartY) / state.zoom;
+                state.offsetX = state.panOffsetX + dx;
+                state.offsetY = state.panOffsetY + dy;
+                render();
+            }
         });
 
         canvas.addEventListener('mousedown', (e) => {
@@ -795,8 +901,10 @@
                 openAddVertexModal();
             } else if (state.mode === 'addEdge') {
                 if (!state.edgeFrom && clickedVertex) {
+                    // выбираем стартовую вершину для ребра
                     state.edgeFrom = clickedVertex;
-                } else if (state.edgeFrom && clickedVertex && clickedVertex !== state.edgeFrom) {
+                } else if (state.edgeFrom && clickedVertex) {
+                    // допускаем петлю: from и to могут совпадать
                     state.graph.addEdge(state.edgeFrom, clickedVertex, 1, '', '#626c7c', 2, false);
                     state.edgeFrom = null;
                     state.mode = 'select';
@@ -812,8 +920,25 @@
                     const edge = state.graph.edges[i];
                     const from = state.graph.vertices.get(edge.from);
                     const to = state.graph.vertices.get(edge.to);
-                    const dist = pointToLineDistance(canvasX, canvasY, from.x, from.y, to.x, to.y);
-                    if (dist < 10) {
+
+                    if (!from || !to) continue;
+
+                    let hit = false;
+
+                    if (edge.from === edge.to) {
+                        // попадание по петле: просто проверяем расстояние до центра вершины
+                        const dist = Math.hypot(canvasX - from.x, canvasY - from.y);
+                        if (dist > from.radius + 5 && dist < from.radius + 40) {
+                            hit = true;
+                        }
+                    } else {
+                        const dist = pointToLineDistance(canvasX, canvasY, from.x, from.y, to.x, to.y);
+                        if (dist < 10) {
+                            hit = true;
+                        }
+                    }
+
+                    if (hit) {
                         state.selectedEdge = i;
                         break;
                     }
@@ -823,8 +948,14 @@
                     state.selectedVertex = clickedVertex;
                     state.isDragging = true;
                 } else {
+                    // панорамирование холста
                     state.selectedVertex = null;
                     state.isDragging = false;
+                    state.isPanning = true;
+                    state.panStartX = e.clientX;
+                    state.panStartY = e.clientY;
+                    state.panOffsetX = state.offsetX;
+                    state.panOffsetY = state.offsetY;
                 }
 
                 updatePropertiesPanel();
@@ -834,6 +965,7 @@
 
         canvas.addEventListener('mouseup', () => {
             state.isDragging = false;
+            state.isPanning = false;
         });
 
         canvas.addEventListener('contextmenu', (e) => {
@@ -1022,8 +1154,18 @@
             state.graph.addVertex(id, label, x, y);
             state.selectedVertex = id;
 
-            state.pendingVertexX += 20;
-            state.pendingVertexY -= 20;
+
+            if ((state.pendingVertexX > 150 && state.pendingVertexY < -150)
+                || (state.pendingVertexX < -150 && state.pendingVertexY > 150)
+            ){
+                state.pendingVertexX -= 20;
+                state.pendingVertexY += 20;
+            }
+            else{
+                state.pendingVertexX += 20;
+                state.pendingVertexY -= 20;
+            }
+            
 
             updateStatus();
             render();
@@ -1347,6 +1489,149 @@
             link.download = filename.trim() === '' ? 'graph.png' : filename + '.png'; // Если пусто, используем 'graph.png'
             link.click();
         }
+
+        // ============ РАБОТА С МАТРИЦЕЙ ВЕСОВ ============
+
+        function openMatrixModal() {
+            document.getElementById('matrixInput').value = '';
+            document.getElementById('vertexLabelsInput').value = '';
+            document.getElementById('isDirectedMatrixInput').checked = false;
+            document.getElementById('matrixModal').classList.add('active');
+        }
+
+        function closeMatrixModal() {
+            document.getElementById('matrixModal').classList.remove('active');
+        }
+
+        function confirmLoadMatrix() {
+            const matrixText = document.getElementById('matrixInput').value.trim();
+            const labelsText = document.getElementById('vertexLabelsInput').value.trim();
+            const isDirected = document.getElementById('isDirectedMatrixInput').checked;
+
+            if (!matrixText) {
+                alert('Введите матрицу весов');
+                return;
+            }
+
+            try {
+                // Парсинг матрицы
+                const lines = matrixText.split('\n').map(line => 
+                    line.trim().split(/\s+/).map(Number)
+                ).filter(line => line.length > 0);
+
+                const size = lines.length;
+
+                // Проверка корректности матрицы
+                for (let line of lines) {
+                    if (line.length !== size) {
+                        alert('Матрица должна быть квадратной!');
+                        return;
+                    }
+                }
+
+                // Парсинг метак вершин
+                const labels = labelsText ? 
+                    labelsText.split(',').map(l => l.trim()) : 
+                    Array.from({length: size}, (_, i) => `V${i}`);
+
+                if (labels.length !== size) {
+                    alert(`Количество метак (${labels.length}) не совпадает с размером матрицы (${size})`);
+                    return;
+                }
+
+                // Очистка графа
+                state.graph.clear();
+                state.selectedVertex = null;
+                state.selectedEdge = null;
+                state.highlightedPath = [];
+                state.highlightedVertices = [];
+
+                // Создание вершин
+                for (let i = 0; i < size; i++) {
+                    state.graph.addVertex(i.toString(), labels[i], i * 100 - (size * 50), 0);
+                }
+
+                // Создание рёбер из матрицы
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        const weight = lines[i][j];
+                        if (weight !== 0 && weight !== undefined) {
+                            // Для неориентированного графа избегаем дублирования
+                            if (isDirected || i <= j) {
+                                state.graph.addEdge(i.toString(), j.toString(), weight, 
+                                                weight.toString(), '#626c7c', 2, isDirected);
+                            }
+                        }
+                    }
+                }
+
+                updateStatus();
+                render();
+                closeMatrixModal();
+                alert('Граф успешно загружен из матрицы');
+
+            } catch (error) {
+                alert('Ошибка при парсинге матрицы: ' + error.message);
+            }
+        }
+
+        function loadGraphFromMatrix() {
+            openMatrixModal();
+        }
+
+        function saveGraphAsMatrix() {
+            const vertices = Array.from(state.graph.vertices.values());
+            const size = vertices.length;
+
+            if (size === 0) {
+                alert('Граф пуст');
+                return;
+            }
+
+            // Создание матрицы
+            const matrix = Array(size).fill(null).map(() => Array(size).fill(0));
+
+            // Заполнение матрицы весами
+            for (let edge of state.graph.edges) {
+                const fromIdx = Array.from(state.graph.vertices.keys()).indexOf(edge.from);
+                const toIdx = Array.from(state.graph.vertices.keys()).indexOf(edge.to);
+
+                if (fromIdx !== -1 && toIdx !== -1) {
+                    matrix[fromIdx][toIdx] = edge.weight;
+
+                    // Для неориентированных рёбер добавляем симметричное значение
+                    if (!edge.isDirected) {
+                        matrix[toIdx][fromIdx] = edge.weight;
+                    }
+                }
+            }
+
+            // Форматирование матрицы в строку
+            let matrixText = 'Матрица весов графа\n';
+            matrixText += 'Вершины: ' + vertices.map(v => v.label).join(', ') + '\n\n';
+
+            for (let i = 0; i < size; i++) {
+                matrixText += matrix[i].map(val => 
+                    val === 0 ? '0' : val.toFixed(2)
+                ).join('\t') + '\n';
+            }
+
+            // Сохранение в файл
+            const filename = prompt('Введите название файла:', 'graph_matrix');
+            if (filename === null) return;
+
+            const blob = new Blob([matrixText], { type: 'text/plain; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename.trim() === '' ? 'graph_matrix.txt' : filename + '.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('Матрица сохранена в файл');
+        }
+
+
 
         // Инициализация
         updateStatus();
