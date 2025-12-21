@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Визуализация графов</title>
+    <style>
+        :root {
+            --color-primary: #208141;
+            --color-primary-hover: #1a6633;
+            --color-primary-active: #145029;
+            --color-text: #1f2121;
+            --color-text-secondary: #626c7c;
+            --color-bg: #fcfcf9;
+            --color-surface: #ffffff;
+            --color-border: #ae5240;
+            --color-error: #c0152f;
+            --color-success: #208141;
+            --color-warning: #a84b2f;
+            --focus-ring: 0 0 0 3px rgba(32, 129, 65, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .toolbar {
+            width: 280px;
+            background-color: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .toolbar h2 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .toolbar-section {
+            margin-bottom: 24px;
+        }
+
+        .toolbar-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background-color: var(--color-surface);
+            color: var(--color-text);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn:hover {
+            background-color: rgba(32, 129, 65, 0.08);
+            border-color: var(--color-primary);
+        }
+
+        .btn:active {
+            /* background-color: rgba(32, 129, 65, 0.15); */
+            background-color: var(--color-primary);
+        }
+
+        .btn:focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .btn.primary {
+            background-color: var(--color-primary);
+            color: #fcfcf9;
+            border-color: var(--color-primary);
+        }
+
+        .btn.primary:hover {
+            background-color: var(--color-primary-hover);
+        }
+
+        .btn.primary:active {
+            background-color: var(--color-primary-active);
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-toolbar {
+            background-color: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .top-toolbar button {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        canvas {
+            flex: 1;
+            background-color: var(--color-bg);
+            cursor: default;
+            display: block;
+        }
+
+        .properties-panel {
+            width: 250px;
+            background-color: var(--color-surface);
+            border-left: 1px solid var(--color-border);
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: -1px 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .property-group {
+            margin-bottom: 16px;
+        }
+
+        .property-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color 150ms;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: var(--focus-ring);
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 40px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .info-box {
+            background-color: rgba(32, 129, 65, 0.08);
+            border: 1px solid rgba(32, 129, 65, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--color-text);
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--color-border);
+            margin: 16px 0;
+            opacity: 0.3;
+        }
+
+        .status-bar {
+            background-color: var(--color-surface);
+            border-top: 1px solid var(--color-border);
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tooltip {
+            position: absolute;
+            background-color: rgba(31, 33, 33, 0.9);
+            color: #fcfcf9;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 200px;
+            word-wrap: break-word;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--color-surface);
+            border-radius: 10px;
+            padding: 24px;
+            max-width: 400px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-content h2 {
+            margin: 0 0 16px 0;
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 16px;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Левая панель инструментов -->
+        <div class="toolbar">
+            <h2>Граф</h2>
+
+            <div class="toolbar-section">
+                <h3>Операции</h3>
+                <button class="btn" id="addVertexBtn" title="Добавить вершину (V)">Добавить вершину</button>
+                <button class="btn" id="addEdgeBtn" title="Добавить ребро (E)">Добавить ребро</button>
+                <button class="btn" id="deleteBtn" title="Удалить (Del)">Удалить элемент</button>
+                <button class="btn" id="clearBtn" title="Очистить граф">Очистить граф</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Макет</h3>
+                <button class="btn" id="forceLayoutBtn">Упорядоченный</button>
+                <button class="btn" id="circleLayoutBtn">Круглый</button>
+                <button class="btn" id="gridLayoutBtn">Сетка</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Алгоритмы</h3>
+                <button class="btn" id="dijkstraBtn">Кратчайший путь (Дейкстра)</button>
+                <button class="btn" id="bfsBtn">BFS обход</button>
+                <button class="btn" id="dfsBtn">DFS обход</button>
+                <button class="btn" id="clear">Clear</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Файл</h3>
+                <button class="btn" id="saveBtn">Сохранить JSON</button>
+                <button class="btn" id="loadBtn">Загрузить JSON</button>
+                <button class="btn" id="exportBtn">Экспорт PNG</button>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+            </div>
+
+            <div class="divider"></div>
+            <div class="info-box">
+                <strong>Справка:</strong><br>
+                • Левый клик — выбрать<br>
+                • Правый клик на вершину — удалить<br>
+                • Перетаскивание — перемещение<br>
+                • Скролл — масштаб
+            </div>
+        </div>
+
+        <!-- Рабочая область -->
+        <div class="canvas-wrapper">
+            <!-- Верхняя панель -->
+            <div class="top-toolbar">
+                <button class="btn" id="zoomInBtn" title="Увеличить (Ctrl++)">🔍+</button>
+                <button class="btn" id="zoomOutBtn" title="Уменьшить (Ctrl+-)">🔍−</button>
+                <button class="btn" id="resetZoomBtn" title="Сброс масштаба">Сброс</button>
+                <span id="zoomLevel" style="margin-left: auto; color: var(--color-text-secondary); font-size: 12px;">100%</span>
+            </div>
+
+            <!-- Canvas -->
+            <canvas id="graphCanvas"></canvas>
+
+            <!-- Статус-бар -->
+            <div class="status-bar">
+                <span id="vertexCount">Вершин: 0</span>
+                <span id="edgeCount">Рёбер: 0</span>
+                <span id="mousePos">Позиция: —</span>
+            </div>
+        </div>
+
+        <!-- Правая панель свойств -->
+        <div class="properties-panel">
+            <h2 style="margin-top: 0;">Свойства</h2>
+
+            <div id="noSelection" class="info-box">
+                Выберите элемент графа для редактирования его свойств.
+            </div>
+
+            <div id="vertexProperties" class="hidden">
+                <div class="property-group">
+                    <label class="property-label">Метка вершины</label>
+                    <input type="text" id="vertexLabel" class="form-control" placeholder="A, B, C...">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Цвет</label>
+                    <input type="color" id="vertexColor" class="color-picker" value="#208141">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Радиус</label>
+                    <input type="number" id="vertexRadius" class="form-control" min="10" max="50" value="25">
+                </div>
+            </div>
+
+            <div id="edgeProperties" class="hidden">
+                <div class="property-group">
+                    <label class="property-label">Метка ребра</label>
+                    <input type="text" id="edgeLabel" class="form-control" placeholder="Вес, расстояние...">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Вес</label>
+                    <input type="number" id="edgeWeight" class="form-control" min="0" step="0.1" value="1">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Цвет</label>
+                    <input type="color" id="edgeColor" class="color-picker" value="#626c7c">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Толщина</label>
+                    <input type="number" id="edgeWidth" class="form-control" min="1" max="5" value="2">
+                </div>
+
+                <div class="property-group">
+                    <label>
+                        <input type="checkbox" id="isDirected"> Ориентированное
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <div id="dijkstraModal" class="modal">
+        <div class="modal-content">
+            <h2>Кратчайший путь (Дейкстра)</h2>
+            <div class="form-group">
+                <label>Стартовая вершина:</label>
+                <select id="startVertex" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Конечная вершина:</label>
+                <select id="endVertex" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeDijkstraModal()">Отмена</button>
+                <button class="btn primary" onclick="runDijkstra()">Найти путь</button>
+            </div>
+        </div>
+    </div>
+    <div id="bfsModal" class="modal">
+        <div class="modal-content">
+            <h2>BFS обход</h2>
+            <div class="form-group">
+                <label>Выберите стартовую вершину:</label>
+                <select id="bfsStartVertex" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeBfsModal()">Отмена</button>
+                <button class="btn primary" onclick="runBFS()">Начать обход</button>
+            </div>
+        </div>
+    </div>
+    <div id="dfsModal" class="modal">
+        <div class="modal-content">
+            <h2>DFS обход</h2>
+            <div class="form-group">
+                <label>Выберите стартовую вершину:</label>
+                <select id="dfsStartVertex" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeDfsModal()">Отмена</button>
+                <button class="btn primary" onclick="runDFS()">Начать обход</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ============ МОДЕЛЬ ДАННЫХ ============
+        class Graph {
+            constructor() {
+                this.vertices = new Map();
+                this.edges = [];
+            }
+
+            addVertex(id, label = id, x = 0, y = 0, color = '#208141', radius = 25) {
+                this.vertices.set(id, { id, label, x, y, color, radius });
+            }
+
+            addEdge(from, to, weight = 1, label = '', color = '#626c7c', width = 2, isDirected = false) {
+                this.edges.push({ from, to, weight, label, color, width, isDirected });
+            }
+
+            removeVertex(id) {
+                this.vertices.delete(id);
+                this.edges = this.edges.filter(e => e.from !== id && e.to !== id);
+            }
+
+            removeEdge(index) {
+                this.edges.splice(index, 1);
+            }
+
+            clear() {
+                this.vertices.clear();
+                this.edges = [];
+            }
+
+            toJSON() {
+                return {
+                    vertices: Array.from(this.vertices.values()),
+                    edges: this.edges
+                };
+            }
+
+            fromJSON(data) {
+                this.clear();
+                data.vertices.forEach(v => {
+                    this.addVertex(v.id, v.label, v.x, v.y, v.color || '#208141', v.radius || 25);
+                });
+                data.edges.forEach(e => {
+                    this.addEdge(e.from, e.to, e.weight || 1, e.label || '', e.color || '#626c7c', e.width || 2, e.isDirected || false);
+                });
+            }
+        }
+
+        // ============ СОСТОЯНИЕ ПРИЛОЖЕНИЯ ============
+        const state = {
+            graph: new Graph(),
+            mode: 'select', // select, addVertex, addEdge, delete
+            selectedVertex: null,
+            selectedEdge: null,
+            zoom: 1,
+            offsetX: 0,
+            offsetY: 0,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            edgeFrom: null,
+            highlightedPath: [],
+            highlightedVertices: []
+        };
+
+        // ============ ИНИЦИАЛИЗАЦИЯ ============
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            render();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ============ РЕНДЕРИНГ ============
+        function render() {
+            ctx.fillStyle = '#fcfcf9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(state.zoom, state.zoom);
+            ctx.translate(state.offsetX, state.offsetY);
+
+            // Рисуем рёбра
+            state.graph.edges.forEach((edge, index) => {
+                drawEdge(edge, index);
+            });
+
+            // Рисуем вершины
+            state.graph.vertices.forEach(vertex => {
+                drawVertex(vertex);
+            });
+
+            ctx.restore();
+        }
+
+        function drawVertex(vertex) {
+            const isSelected = state.selectedVertex === vertex.id;
+            const isHighlighted = state.highlightedVertices.includes(vertex.id);
+
+            ctx.fillStyle = isHighlighted ? '#a84b2f' : vertex.color;
+            ctx.beginPath();
+            ctx.arc(vertex.x, vertex.y, vertex.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isSelected) {
+                ctx.strokeStyle = '#1f2121';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.strokeStyle = '#208141';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#fcfcf9';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(vertex.label, vertex.x, vertex.y);
+        }
+
+        function drawEdge(edge, index) {
+            const from = state.graph.vertices.get(edge.from);
+            const to = state.graph.vertices.get(edge.to);
+
+            if (!from || !to) return;
+
+            const isHighlighted = state.highlightedPath.includes(index);
+            const isSelected = state.selectedEdge === index;
+
+            ctx.strokeStyle = isHighlighted ? '#c0152f' : (isSelected ? '#1f2121' : edge.color);
+            ctx.lineWidth = isHighlighted ? 4 : (isSelected ? 3 : edge.width);
+
+            // Рисуем линию
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+
+            // Рисуем стрелку для ориентированных рёбер
+            if (edge.isDirected) {
+                const angle = Math.atan2(to.y - from.y, to.x - from.x);
+                const arrowSize = 12;
+                const endX = to.x - Math.cos(angle) * (to.radius + 5);
+                const endY = to.y - Math.sin(angle) * (to.radius + 5);
+
+                ctx.fillStyle = edge.color;
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - arrowSize * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - arrowSize * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Рисуем метку ребра
+            if (edge.label) {
+                const midX = (from.x + to.x) / 2;
+                const midY = (from.y + to.y) / 2;
+                ctx.fillStyle = '#1f2121';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(edge.label, midX, midY - 8);
+            }
+        }
+
+        // ============ ОБРАБОТЧИКИ СОБЫТИЙ ============
+
+        // Кнопки инструментов
+        document.getElementById('addVertexBtn').addEventListener('click', () => {
+            state.mode = state.mode === 'addVertex' ? 'select' : 'addVertex';
+            document.getElementById('addVertexBtn').style.opacity = state.mode === 'addVertex' ? '0.5' : '1';
+        });
+
+        document.getElementById('addEdgeBtn').addEventListener('click', () => {
+            state.mode = state.mode === 'addEdge' ? 'select' : 'addEdge';
+            document.getElementById('addEdgeBtn').style.opacity = state.mode === 'addEdge' ? '0.5' : '1';
+            state.edgeFrom = null;
+        });
+
+        document.getElementById('deleteBtn').addEventListener('click', () => {
+            if (state.selectedVertex) {
+                state.graph.removeVertex(state.selectedVertex);
+                state.selectedVertex = null;
+            } else if (state.selectedEdge !== null) {
+                state.graph.removeEdge(state.selectedEdge);
+                state.selectedEdge = null;
+            }
+            updateStatus();
+            render();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('Вы уверены? Это действие невозможно отменить.')) {
+                state.graph.clear();
+                state.selectedVertex = null;
+                state.selectedEdge = null;
+                state.highlightedPath = [];
+                state.highlightedVertices = [];
+                updateStatus();
+                render();
+            }
+        });
+
+        // Макеты
+        document.getElementById('forceLayoutBtn').addEventListener('click', () => {
+            forceDirectedLayout();
+            render();
+        });
+
+        document.getElementById('circleLayoutBtn').addEventListener('click', () => {
+            circleLayout();
+            render();
+        });
+
+        document.getElementById('gridLayoutBtn').addEventListener('click', () => {
+            gridLayout();
+            render();
+        });
+
+        // Алгоритмы
+        document.getElementById('dijkstraBtn').addEventListener('click', openDijkstraModal);
+        document.getElementById('bfsBtn').addEventListener('click', openBfsModal);
+        document.getElementById('dfsBtn').addEventListener('click', openDfsModal);
+
+        // Файлы
+        document.getElementById('saveBtn').addEventListener('click', saveGraph);
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+        document.getElementById('exportBtn').addEventListener('click', exportCanvas);
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        state.graph.fromJSON(data);
+                        state.selectedVertex = null;
+                        state.selectedEdge = null;
+                        updateStatus();
+                        render();
+                    } catch (error) {
+                        alert('Ошибка загрузки файла: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Масштабирование
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            state.zoom *= 1.2;
+            updateZoomDisplay();
+            render();
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            state.zoom /= 1.2;
+            updateZoomDisplay();
+            render();
+        });
+
+        document.getElementById('resetZoomBtn').addEventListener('click', () => {
+            state.zoom = 1;
+            state.offsetX = 0;
+            state.offsetY = 0;
+            updateZoomDisplay();
+            render();
+        });
+
+        // Canvas события
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left - canvas.width / 2) / state.zoom - state.offsetX;
+            const canvasY = (e.clientY - rect.top - canvas.height / 2) / state.zoom - state.offsetY;
+
+            document.getElementById('mousePos').textContent = `Позиция: ${Math.round(canvasX)}, ${Math.round(canvasY)}`;
+
+            if (state.isDragging && state.selectedVertex) {
+                const vertex = state.graph.vertices.get(state.selectedVertex);
+                vertex.x = canvasX;
+                vertex.y = canvasY;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left - canvas.width / 2) / state.zoom - state.offsetX;
+            const canvasY = (e.clientY - rect.top - canvas.height / 2) / state.zoom - state.offsetY;
+
+            if (e.button === 2) return; // Right click handled separately
+
+            // Поиск вершины под курсором
+            let clickedVertex = null;
+            for (let [id, vertex] of state.graph.vertices) {
+                const dist = Math.hypot(vertex.x - canvasX, vertex.y - canvasY);
+                if (dist <= vertex.radius) {
+                    clickedVertex = id;
+                    break;
+                }
+            }
+
+            if (state.mode === 'addVertex' && !clickedVertex) {
+                // Диалог для ввода метки
+                const label = prompt('Введите метку вершины:');
+                if (label === null) return; // Отмена
+                if (label.trim() === '') {
+                    alert('Метка не может быть пустой!');
+                    return;
+                }
+
+                // Проверка уникальности метки
+                for (let [id, vertex] of state.graph.vertices) {
+                    if (vertex.label === label) {
+                        alert('Вершина с такой меткой уже существует!');
+                        return;
+                    }
+                }
+
+                // Генерация уникального ID
+                let id = label;
+                let counter = 1;
+                while (state.graph.vertices.has(id)) {
+                    id = label + counter;
+                    counter++;
+                }
+
+                state.graph.addVertex(id, label, canvasX, canvasY);
+                state.selectedVertex = id;
+                updateStatus();
+                render();
+                updatePropertiesPanel();
+            } else if (state.mode === 'addEdge') {
+                if (!state.edgeFrom && clickedVertex) {
+                    state.edgeFrom = clickedVertex;
+                } else if (state.edgeFrom && clickedVertex && clickedVertex !== state.edgeFrom) {
+                    state.graph.addEdge(state.edgeFrom, clickedVertex, 1, '', '#626c7c', 2, false);
+                    state.edgeFrom = null;
+                    state.mode = 'select';
+                    document.getElementById('addEdgeBtn').style.opacity = '1';
+                    updateStatus();
+                    render();
+                }
+            } else if (state.mode === 'select') {
+                state.selectedEdge = null;
+
+                // Проверка клика по рёбрам
+                for (let i = 0; i < state.graph.edges.length; i++) {
+                    const edge = state.graph.edges[i];
+                    const from = state.graph.vertices.get(edge.from);
+                    const to = state.graph.vertices.get(edge.to);
+                    const dist = pointToLineDistance(canvasX, canvasY, from.x, from.y, to.x, to.y);
+                    if (dist < 10) {
+                        state.selectedEdge = i;
+                        break;
+                    }
+                }
+
+                if (clickedVertex) {
+                    state.selectedVertex = clickedVertex;
+                    state.isDragging = true;
+                } else {
+                    state.selectedVertex = null;
+                    state.isDragging = false;
+                }
+
+                updatePropertiesPanel();
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            state.isDragging = false;
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left - canvas.width / 2) / state.zoom - state.offsetX;
+            const canvasY = (e.clientY - rect.top - canvas.height / 2) / state.zoom - state.offsetY;
+
+            for (let [id, vertex] of state.graph.vertices) {
+                const dist = Math.hypot(vertex.x - canvasX, vertex.y - canvasY);
+                if (dist <= vertex.radius) {
+                    state.graph.removeVertex(id);
+                    state.selectedVertex = null;
+                    state.selectedEdge = null;
+                    updateStatus();
+                    render();
+                    return;
+                }
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            state.zoom *= zoomFactor;
+            state.zoom = Math.max(0.1, Math.min(state.zoom, 5));
+            updateZoomDisplay();
+            render();
+        });
+
+        // Свойства элементов
+        document.getElementById('vertexLabel').addEventListener('change', (e) => {
+            if (state.selectedVertex) {
+                state.graph.vertices.get(state.selectedVertex).label = e.target.value;
+                render();
+            }
+        });
+
+        document.getElementById('vertexColor').addEventListener('change', (e) => {
+            if (state.selectedVertex) {
+                state.graph.vertices.get(state.selectedVertex).color = e.target.value;
+                render();
+            }
+        });
+
+        document.getElementById('vertexRadius').addEventListener('change', (e) => {
+            if (state.selectedVertex) {
+                state.graph.vertices.get(state.selectedVertex).radius = parseInt(e.target.value);
+                render();
+            }
+        });
+
+        document.getElementById('edgeLabel').addEventListener('change', (e) => {
+            if (state.selectedEdge !== null) {
+                state.graph.edges[state.selectedEdge].label = e.target.value;
+                render();
+            }
+        });
+
+        document.getElementById('edgeWeight').addEventListener('change', (e) => {
+            if (state.selectedEdge !== null) {
+                state.graph.edges[state.selectedEdge].weight = parseFloat(e.target.value);
+            }
+        });
+
+        document.getElementById('edgeColor').addEventListener('change', (e) => {
+            if (state.selectedEdge !== null) {
+                state.graph.edges[state.selectedEdge].color = e.target.value;
+                render();
+            }
+        });
+
+        document.getElementById('edgeWidth').addEventListener('change', (e) => {
+            if (state.selectedEdge !== null) {
+                state.graph.edges[state.selectedEdge].width = parseInt(e.target.value);
+                render();
+            }
+        });
+
+        document.getElementById('isDirected').addEventListener('change', (e) => {
+            if (state.selectedEdge !== null) {
+                state.graph.edges[state.selectedEdge].isDirected = e.target.checked;
+                render();
+            }
+        });
+
+        // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
+
+        function updatePropertiesPanel() {
+            const noSelection = document.getElementById('noSelection');
+            const vertexProps = document.getElementById('vertexProperties');
+            const edgeProps = document.getElementById('edgeProperties');
+
+            noSelection.classList.remove('hidden');
+            vertexProps.classList.add('hidden');
+            edgeProps.classList.add('hidden');
+
+            if (state.selectedVertex) {
+                const vertex = state.graph.vertices.get(state.selectedVertex);
+                document.getElementById('vertexLabel').value = vertex.label;
+                document.getElementById('vertexColor').value = vertex.color;
+                document.getElementById('vertexRadius').value = vertex.radius;
+
+                noSelection.classList.add('hidden');
+                vertexProps.classList.remove('hidden');
+            } else if (state.selectedEdge !== null) {
+                const edge = state.graph.edges[state.selectedEdge];
+                document.getElementById('edgeLabel').value = edge.label;
+                document.getElementById('edgeWeight').value = edge.weight;
+                document.getElementById('edgeColor').value = edge.color;
+                document.getElementById('edgeWidth').value = edge.width;
+                document.getElementById('isDirected').checked = edge.isDirected;
+
+                noSelection.classList.add('hidden');
+                edgeProps.classList.remove('hidden');
+            }
+        }
+
+        function updateStatus() {
+            document.getElementById('vertexCount').textContent = `Вершин: ${state.graph.vertices.size}`;
+            document.getElementById('edgeCount').textContent = `Рёбер: ${state.graph.edges.length}`;
+        }
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = `${Math.round(state.zoom * 100)}%`;
+        }
+
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            if (lenSq !== 0) param = dot / lenSq;
+            let xx, yy;
+            if (param < 0) { xx = x1; yy = y1; }
+            else if (param > 1) { xx = x2; yy = y2; }
+            else { xx = x1 + param * C; yy = y1 + param * D; }
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // ============ МАКЕТЫ ============
+
+        function forceDirectedLayout() {
+            const iterations = 100;
+            const k = 100;
+            const c = 0.1;
+
+            for (let iter = 0; iter < iterations; iter++) {
+                const forces = new Map();
+                for (let [id] of state.graph.vertices) {
+                    forces.set(id, { x: 0, y: 0 });
+                }
+
+                // Отталкивание между вершинами
+                const vertices = Array.from(state.graph.vertices.values());
+                for (let i = 0; i < vertices.length; i++) {
+                    for (let j = i + 1; j < vertices.length; j++) {
+                        const v1 = vertices[i];
+                        const v2 = vertices[j];
+                        const dx = v2.x - v1.x;
+                        const dy = v2.y - v1.y;
+                        const dist = Math.hypot(dx, dy) + 0.1;
+                        const force = (k * k) / dist;
+                        forces.get(v1.id).x -= (force * dx) / dist;
+                        forces.get(v1.id).y -= (force * dy) / dist;
+                        forces.get(v2.id).x += (force * dx) / dist;
+                        forces.get(v2.id).y += (force * dy) / dist;
+                    }
+                }
+
+                // Притяжение вдоль рёбер
+                for (let edge of state.graph.edges) {
+                    const v1 = state.graph.vertices.get(edge.from);
+                    const v2 = state.graph.vertices.get(edge.to);
+                    const dx = v2.x - v1.x;
+                    const dy = v2.y - v1.y;
+                    const dist = Math.hypot(dx, dy) + 0.1;
+                    const force = (dist * dist) / k;
+                    forces.get(v1.id).x += (force * dx) / dist;
+                    forces.get(v1.id).y += (force * dy) / dist;
+                    forces.get(v2.id).x -= (force * dx) / dist;
+                    forces.get(v2.id).y -= (force * dy) / dist;
+                }
+
+                // Применяем силы
+                for (let [id, vertex] of state.graph.vertices) {
+                    const f = forces.get(id);
+                    const dist = Math.hypot(f.x, f.y);
+                    if (dist > 0) {
+                        vertex.x += c * (f.x / dist) * Math.min(dist, 50);
+                        vertex.y += c * (f.y / dist) * Math.min(dist, 50);
+                    }
+                }
+            }
+        }
+
+        function circleLayout() {
+            const vertices = Array.from(state.graph.vertices.values());
+            const radius = Math.max(200, vertices.length * 30);
+            const center = { x: 0, y: 0 };
+
+            vertices.forEach((vertex, i) => {
+                const angle = (i / vertices.length) * Math.PI * 2;
+                vertex.x = center.x + Math.cos(angle) * radius;
+                vertex.y = center.y + Math.sin(angle) * radius;
+            });
+        }
+
+        function gridLayout() {
+            const vertices = Array.from(state.graph.vertices.values());
+            const cols = Math.ceil(Math.sqrt(vertices.length));
+            const spacing = 150;
+
+            vertices.forEach((vertex, i) => {
+                vertex.x = (i % cols - cols / 2) * spacing;
+                vertex.y = (Math.floor(i / cols) - cols / 2) * spacing;
+            });
+        }
+
+        // ============ АЛГОРИТМЫ ============
+
+        function openDijkstraModal() {
+            if (state.graph.vertices.size < 2) {
+                alert('Нужно минимум 2 вершины');
+                return;
+            }
+
+            const select1 = document.getElementById('startVertex');
+            const select2 = document.getElementById('endVertex');
+            select1.innerHTML = '';
+            select2.innerHTML = '';
+
+            for (let [id, vertex] of state.graph.vertices) {
+                const opt1 = document.createElement('option');
+                opt1.value = id;
+                opt1.textContent = vertex.label || id;
+                select1.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = id;
+                opt2.textContent = vertex.label || id;
+                select2.appendChild(opt2);
+            }
+
+            document.getElementById('dijkstraModal').classList.add('active');
+        }
+
+        function closeDijkstraModal() {
+            document.getElementById('dijkstraModal').classList.remove('active');
+        }
+
+        function runDijkstra() {
+            const start = document.getElementById('startVertex').value;
+            const end = document.getElementById('endVertex').value;
+
+            const distances = new Map();
+            const previous = new Map();
+            const unvisited = new Set();
+
+            for (let [id] of state.graph.vertices) {
+                distances.set(id, id === start ? 0 : Infinity);
+                previous.set(id, null);
+                unvisited.add(id);
+            }
+
+            while (unvisited.size > 0) {
+                let current = null;
+                let minDist = Infinity;
+
+                for (let id of unvisited) {
+                    if (distances.get(id) < minDist) {
+                        minDist = distances.get(id);
+                        current = id;
+                    }
+                }
+
+                if (current === null || distances.get(current) === Infinity) break;
+
+                unvisited.delete(current);
+
+                for (let edge of state.graph.edges) {
+                    if (edge.from === current && unvisited.has(edge.to)) {
+                        const alt = distances.get(current) + edge.weight;
+                        if (alt < distances.get(edge.to)) {
+                            distances.set(edge.to, alt);
+                            previous.set(edge.to, current);
+                        }
+                    }
+                }
+            }
+
+            // Восстановление пути
+            const path = [];
+            let current = end;
+            while (current !== null) {
+                path.unshift(current);
+                current = previous.get(current);
+            }
+
+            if (path[0] !== start) {
+                alert('Пути не существует');
+                closeDijkstraModal();
+                return;
+            }
+
+            state.highlightedVertices = path;
+            state.highlightedPath = [];
+
+            for (let i = 0; i < path.length - 1; i++) {
+                for (let j = 0; j < state.graph.edges.length; j++) {
+                    const edge = state.graph.edges[j];
+                    if ((edge.from === path[i] && edge.to === path[i + 1]) ||
+                        (!edge.isDirected && edge.from === path[i + 1] && edge.to === path[i])) {
+                        state.highlightedPath.push(j);
+                        break;
+                    }
+                }
+            }
+
+            alert(`Кратчайший путь найден!\nДистанция: ${distances.get(end)}\nПуть: ${path.join(' → ')}`);
+            closeDijkstraModal();
+            render();
+        }
+
+        function openBfsModal() {
+            if (state.graph.vertices.size < 1) {
+                alert('Граф пуст');
+                return;
+            }
+
+            const select = document.getElementById('bfsStartVertex');
+            select.innerHTML = '';
+
+            for (let [id, vertex] of state.graph.vertices) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = vertex.label || id;
+                select.appendChild(opt);
+            }
+
+            document.getElementById('bfsModal').classList.add('active');
+        }
+
+        function closeBfsModal() {
+            document.getElementById('bfsModal').classList.remove('active');
+        }
+
+        function runBFS() {
+            const start = document.getElementById('bfsStartVertex').value;
+            const visited = new Set();
+            const queue = [start];
+            const order = [];
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                if (visited.has(current)) continue;
+                visited.add(current);
+                order.push(current);
+
+                for (let edge of state.graph.edges) {
+                    if (edge.from === current && !visited.has(edge.to)) {
+                        queue.push(edge.to);
+                    } else if (!edge.isDirected && edge.to === current && !visited.has(edge.from)) {
+                        queue.push(edge.from);
+                    }
+                }
+            }
+
+            state.highlightedVertices = order;
+            state.highlightedPath = [];
+            const pathStr = order.map(id => state.graph.vertices.get(id).label || id).join(' → ');
+            alert('BFS обход: ' + pathStr);
+            closeBfsModal();
+            render();
+        }
+
+        function openDfsModal() {
+            if (state.graph.vertices.size < 1) {
+                alert('Граф пуст');
+                return;
+            }
+
+            const select = document.getElementById('dfsStartVertex');
+            select.innerHTML = '';
+
+            for (let [id, vertex] of state.graph.vertices) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = vertex.label || id;
+                select.appendChild(opt);
+            }
+
+            document.getElementById('dfsModal').classList.add('active');
+        }
+
+        function closeDfsModal() {
+            document.getElementById('dfsModal').classList.remove('active');
+        }
+
+        function runDFS() {
+            const start = document.getElementById('dfsStartVertex').value;
+            const visited = new Set();
+            const order = [];
+
+            function dfs(vertex) {
+                visited.add(vertex);
+                order.push(vertex);
+
+                for (let edge of state.graph.edges) {
+                    if (edge.from === vertex && !visited.has(edge.to)) {
+                        dfs(edge.to);
+                    } else if (!edge.isDirected && edge.to === vertex && !visited.has(edge.from)) {
+                        dfs(edge.from);
+                    }
+                }
+            }
+
+            dfs(start);
+
+            state.highlightedVertices = order;
+            state.highlightedPath = [];
+            const pathStr = order.map(id => state.graph.vertices.get(id).label || id).join(' → ');
+            alert('DFS обход: ' + pathStr);
+            closeDfsModal();
+            render();
+        }
+
+        // ============ ФАЙЛЫ ============
+
+        function saveGraph() {
+            // Диалог для ввода названия файла
+            const filename = prompt('Введите название файла:', 'graph');
+            if (filename === null) return; // Отмена
+
+            const data = state.graph.toJSON();
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename.trim() === '' ? 'graph.json' : filename + '.json'; // Если пусто, используем 'graph.json'
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportCanvas() {
+            // Диалог для ввода названия файла
+            const filename = prompt('Введите название файла:', 'graph');
+            if (filename === null) return; // Отмена
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = filename.trim() === '' ? 'graph.png' : filename + '.png'; // Если пусто, используем 'graph.png'
+            link.click();
+        }
+
+        // Инициализация
+        updateStatus();
+        updateZoomDisplay();
+    </script>
+</body>
+</html>
