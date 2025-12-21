@@ -1022,6 +1022,9 @@
             state.graph.addVertex(id, label, x, y);
             state.selectedVertex = id;
 
+            state.pendingVertexX += 20;
+            state.pendingVertexY -= 20;
+
             updateStatus();
             render();
             updatePropertiesPanel();
