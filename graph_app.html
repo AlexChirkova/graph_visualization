@@ -525,7 +525,9 @@
             dragStartY: 0,
             edgeFrom: null,
             highlightedPath: [],
-            highlightedVertices: []
+            highlightedVertices: [],
+            pendingVertexX: 0, 
+            pendingVertexY: 0,
         };
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
@@ -639,9 +641,12 @@
 
         // Кнопки инструментов
         document.getElementById('addVertexBtn').addEventListener('click', () => {
-            state.mode = state.mode === 'addVertex' ? 'select' : 'addVertex';
-            document.getElementById('addVertexBtn').style.opacity = state.mode === 'addVertex' ? '0.5' : '1';
-        });
+        state.mode = state.mode === 'addVertex' ? 'select' : 'addVertex';
+        document.getElementById('addVertexBtn').style.opacity = state.mode === 'addVertex' ? '0.5' : '1';
+        if (state.mode === 'addVertex') {
+            openAddVertexModal();
+        }
+    });
 
         document.getElementById('addEdgeBtn').addEventListener('click', () => {
             state.mode = state.mode === 'addEdge' ? 'select' : 'addEdge';
@@ -742,6 +747,14 @@
             render();
         });
 
+
+        // Обработка кнопок в модальных окнах
+        document.getElementById('vertexLabelInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmAddVertex();
+            }
+        });
+
         // Canvas события
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -776,35 +789,10 @@
             }
 
             if (state.mode === 'addVertex' && !clickedVertex) {
-                // Диалог для ввода метки
-                const label = prompt('Введите метку вершины:');
-                if (label === null) return; // Отмена
-                if (label.trim() === '') {
-                    alert('Метка не может быть пустой!');
-                    return;
-                }
-
-                // Проверка уникальности метки
-                for (let [id, vertex] of state.graph.vertices) {
-                    if (vertex.label === label) {
-                        alert('Вершина с такой меткой уже существует!');
-                        return;
-                    }
-                }
-
-                // Генерация уникального ID
-                let id = label;
-                let counter = 1;
-                while (state.graph.vertices.has(id)) {
-                    id = label + counter;
-                    counter++;
-                }
-
-                state.graph.addVertex(id, label, canvasX, canvasY);
-                state.selectedVertex = id;
-                updateStatus();
-                render();
-                updatePropertiesPanel();
+                // Сохраняем координаты для последующего использования
+                state.pendingVertexX = canvasX;
+                state.pendingVertexY = canvasY;
+                openAddVertexModal();
             } else if (state.mode === 'addEdge') {
                 if (!state.edgeFrom && clickedVertex) {
                     state.edgeFrom = clickedVertex;
@@ -990,6 +978,56 @@
             const dy = py - yy;
             return Math.sqrt(dx * dx + dy * dy);
         }
+
+        function openAddVertexModal() {
+            const input = document.getElementById('vertexLabelInput');
+            input.value = '';
+            input.focus();
+            document.getElementById('addVertexModal').classList.add('active');
+        }
+
+        function closeAddVertexModal() {
+            document.getElementById('addVertexModal').classList.remove('active');
+            state.mode = 'select';
+            document.getElementById('addVertexBtn').style.opacity = '1';
+        }
+
+        function confirmAddVertex() {
+            const label = document.getElementById('vertexLabelInput').value.trim();
+
+            if (label === '') {
+                alert('Метка не может быть пустой!');
+                return;
+            }
+
+            // Проверка уникальности метки
+            for (let [id, vertex] of state.graph.vertices) {
+                if (vertex.label === label) {
+                    alert('Вершина с такой меткой уже существует!');
+                    return;
+                }
+            }
+
+            // Генерация уникального ID
+            let id = label;
+            let counter = 1;
+            while (state.graph.vertices.has(id)) {
+                id = label + counter;
+                counter++;
+            }
+
+            // Добавление вершины с сохранёнными координатами
+            const x = state.pendingVertexX || 0;
+            const y = state.pendingVertexY || 0;
+            state.graph.addVertex(id, label, x, y);
+            state.selectedVertex = id;
+
+            updateStatus();
+            render();
+            updatePropertiesPanel();
+            closeAddVertexModal();
+        }
+
 
         // ============ МАКЕТЫ ============
 
