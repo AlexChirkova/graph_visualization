@@ -405,6 +405,19 @@
     </div>
 
     <!-- Модальные окна -->
+     <div id="addVertexModal" class="modal">
+        <div class="modal-content">
+            <h2>Добавить вершину</h2>
+            <div class="form-group">
+                <label>Введите метку вершины:</label>
+                <input type="text" id="vertexLabelInput" class="form-control" placeholder="A, B, C..." autofocus>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeAddVertexModal()">Отмена</button>
+                <button class="btn primary" onclick="confirmAddVertex()">Добавить</button>
+            </div>
+        </div>
+    </div>
     <div id="dijkstraModal" class="modal">
         <div class="modal-content">
             <h2>Кратчайший путь (Дейкстра)</h2>
