@@ -309,6 +309,8 @@
                 <button class="btn" id="bfsBtn">BFS обход</button>
                 <button class="btn" id="dfsBtn">DFS обход</button>
                 <button class="btn" id="componentsBtn">Компоненты связности</button>
+                <button class="btn" id="cutVertexBtn">Шарниры</button>
+                <button class="btn" id="bridgeBtn">Мосты</button>
             </div>
 
             <div class="toolbar-section">
@@ -361,7 +363,8 @@
                 • Левый клик — выбрать<br>
                 • Правый клик на вершину — удалить<br>
                 • Перетаскивание — перемещение<br>
-                • Скролл — масштаб
+                • Скролл — масштаб <br>
+                • Shift — отключить подсветку алгоритмов
             </div>
 
             <div id="vertexProperties" class="hidden">
@@ -831,6 +834,8 @@
         document.getElementById('bfsBtn').addEventListener('click', openBfsModal);
         document.getElementById('dfsBtn').addEventListener('click', openDfsModal);
         document.getElementById('componentsBtn').addEventListener('click', findConnectedComponents);
+        document.getElementById('cutVertexBtn').addEventListener('click', findCutVertices);
+        document.getElementById('bridgeBtn').addEventListener('click', findBridges);
 
         // Матрицы
         document.getElementById('loadMatrixBtn').addEventListener('click', loadGraphFromMatrix);
@@ -1075,25 +1080,40 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (state.componentsOriginalColors) {
-                e.preventDefault();
-
-                state.componentsOriginalColors.forEach((color, id) => {
-                    const v = state.graph.vertices.get(id);
-                    if (v) v.color = color;
-                });
-                state.componentsOriginalColors = null;
-                render();
-
-                // Выходим, чтобы НЕ делать шаги алгоритмов
-                return;
-            }
-            
             if (e.code === 'Space' && state.algoStepMode === 'space') {
                 e.preventDefault();
                 if (state.algoMode === 'bfs') bfsStep();
                 else if (state.algoMode === 'dfs') dfsStep();
                 else if (state.algoMode === 'dijkstra') dijkstraStep();
+            }
+            if (e.key === 'Shift') {
+                e.preventDefault();
+
+                // 1) Компоненты связности: вернуть исходные цвета вершин
+                if (state.componentsOriginalColors) {
+                    state.componentsOriginalColors.forEach((color, id) => {
+                        const v = state.graph.vertices.get(id);
+                        if (v) v.color = color;
+                    });
+                    state.componentsOriginalColors = null;
+                }
+
+                // 2) Шарниры / другие временные перекраски вершин
+                if (state._originalVertexColors) {
+                    state._originalVertexColors.forEach((color, id) => {
+                        const v = state.graph.vertices.get(id);
+                        if (v) v.color = color;
+                    });
+                    state._originalVertexColors = null;
+                }
+
+                // 3) Сбросить подсветку путей / рёбер, если нужно
+                state.highlightedVertices = [];
+                state.highlightedPath = [];
+                state.algoCurrent = null;
+                state.algoNext = null;
+
+                render();
             }
         });
 
@@ -1992,10 +2012,143 @@
                         .map(id => state.graph.vertices.get(id)?.label || id)
                         .join(', ') + '}')
                 .join('\n');
-            alert('Компоненты связности:\n' + compStr +
-                '\n\nНажмите пробел, чтобы вернуть исходные цвета.');
+            alert('Компоненты связности:\n' + compStr);
         }
 
+        // Шарниры и мосты
+        function tarjanArticulationAndBridges() {
+            const ids = new Map();      // время входа в вершину
+            const low = new Map();      // минимальное достижимое время
+            const visited = new Set();
+            let time = 0;
+
+            const cutVertices = new Set(); // шарниры
+            const bridges = [];            // список мостов (пары id вершин)
+
+            function dfs(at, parent = null) {
+                visited.add(at);
+                ids.set(at, time);
+                low.set(at, time);
+                time++;
+
+                let children = 0;
+
+                for (const edge of state.graph.edges) {
+                    // рассматриваем граф как неориентированный
+                    let to = null;
+                    if (edge.from === at) to = edge.to;
+                    else if (!edge.isDirected && edge.to === at) to = edge.from;
+
+                    if (to === null) continue;
+                    if (to === parent) continue;
+
+                    if (!visited.has(to)) {
+                        children++;
+                        dfs(to, at);
+
+                        low.set(at, Math.min(low.get(at), low.get(to)));
+
+                        // условие моста
+                        if (low.get(to) > ids.get(at)) {
+                            bridges.push({ from: at, to });
+                        }
+
+                        // условие шарнира (не корень)
+                        if (parent !== null && low.get(to) >= ids.get(at)) {
+                            cutVertices.add(at);
+                        }
+                    } else {
+                        // обратное ребро
+                        low.set(at, Math.min(low.get(at), ids.get(to)));
+                    }
+                }
+
+                // корень DFS‑дерева — шарнир, если имеет более одного ребёнка [web:187]
+                if (parent === null && children > 1) {
+                    cutVertices.add(at);
+                }
+            }
+
+            for (const [id] of state.graph.vertices) {
+                if (!visited.has(id)) dfs(id, null);
+            }
+
+            return { cutVertices, bridges };
+        }
+
+        function findCutVertices() {
+            if (state.graph.vertices.size === 0) {
+                alert('Граф пуст');
+                return;
+            }
+
+            // Сбрасываем предыдущую подсветку
+            state.highlightedVertices = [];
+            state.highlightedPath = [];
+            state.algoCurrent = null;
+            state.algoNext = null;
+
+            const { cutVertices } = tarjanArticulationAndBridges();
+
+            // Подсветка шарниров красным: используем highlightedVertices,
+            // а в drawVertex уже предусмотрен цвет для них (например, #a84b2f),
+            // либо можно временно менять v.color, если хочешь именно красный.
+            state.highlightedVertices = Array.from(cutVertices);
+
+            render();
+
+            const list = Array.from(cutVertices).map(id =>
+                state.graph.vertices.get(id)?.label || id
+            );
+            alert(
+                cutVertices.size === 0
+                    ? 'Шарниров нет'
+                    : 'Найденные шарниры (cut vertices):\n' + list.join(', ')
+            );
+        }
+
+        function findBridges() {
+            if (state.graph.vertices.size === 0) {
+                alert('Граф пуст');
+                return;
+            }
+
+            state.highlightedVertices = [];
+            state.highlightedPath = [];
+            state.algoCurrent = null;
+            state.algoNext = null;
+
+            const { bridges } = tarjanArticulationAndBridges();
+
+            // Подсветка мостов красным: собираем индексы рёбер в highlightedPath
+            const bridgeEdges = [];
+            for (let i = 0; i < state.graph.edges.length; i++) {
+                const e = state.graph.edges[i];
+                if (bridges.some(b =>
+                    (b.from === e.from && b.to === e.to) ||
+                    (!e.isDirected && b.from === e.to && b.to === e.from)
+                )) {
+                    bridgeEdges.push(i);
+                }
+            }
+            state.highlightedPath = bridgeEdges;
+
+            render();
+
+            const list = bridges.map(b => {
+                const v1 = state.graph.vertices.get(b.from);
+                const v2 = state.graph.vertices.get(b.to);
+                const l1 = v1?.label || b.from;
+                const l2 = v2?.label || b.to;
+                return `${l1} — ${l2}`;
+            });
+
+            alert(
+                bridges.length === 0
+                    ? 'Мостов нет'
+                    : 'Найденные мосты (bridges):\n' + list.join('\n')
+            );
+        }
 
         // ============ ФАЙЛЫ ============
 
