@@ -307,7 +307,7 @@
                 <button class="btn" id="dijkstraBtn">Кратчайший путь (Дейкстра)</button>
                 <button class="btn" id="bfsBtn">BFS обход</button>
                 <button class="btn" id="dfsBtn">DFS обход</button>
-                <button class="btn" id="clear">Clear</button>
+                <button class="btn" id="componentsBtn">Компоненты связности</button>
             </div>
 
             <div class="toolbar-section">
@@ -627,7 +627,10 @@
             djUnvisited: new Set(),
             djDistances: new Map(),
             djPrevious: new Map(),
-            djOrder: [],           
+            djOrder: [],   
+            
+            // Связность
+            componentsOriginalColors: null,
         };
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
@@ -810,7 +813,7 @@
         document.getElementById('dijkstraBtn').addEventListener('click', openDijkstraModal);
         document.getElementById('bfsBtn').addEventListener('click', openBfsModal);
         document.getElementById('dfsBtn').addEventListener('click', openDfsModal);
-
+        document.getElementById('componentsBtn').addEventListener('click', findConnectedComponents);
 
         // Матрицы
         document.getElementById('loadMatrixBtn').addEventListener('click', loadGraphFromMatrix);
@@ -1055,6 +1058,20 @@
         });
 
         document.addEventListener('keydown', (e) => {
+            if (state.componentsOriginalColors) {
+                e.preventDefault();
+
+                state.componentsOriginalColors.forEach((color, id) => {
+                    const v = state.graph.vertices.get(id);
+                    if (v) v.color = color;
+                });
+                state.componentsOriginalColors = null;
+                render();
+
+                // Выходим, чтобы НЕ делать шаги алгоритмов
+                return;
+            }
+            
             if (e.code === 'Space' && state.algoStepMode === 'space') {
                 e.preventDefault();
                 if (state.algoMode === 'bfs') bfsStep();
@@ -1269,6 +1286,7 @@
 
         // ============ АЛГОРИТМЫ ============
 
+        // Дейкстра (кратчайший путь)
         function openDijkstraModal() {
             if (state.graph.vertices.size < 2) {
                 alert('Нужно минимум 2 вершины');
@@ -1512,6 +1530,7 @@
             render();
         }
 
+        // Обход в ширину
         function openBfsModal() {
             if (state.graph.vertices.size < 1) {
                 alert('Граф пуст');
@@ -1636,6 +1655,7 @@
             render();
         }
 
+        // Обход в глубину
         function openDfsModal() {
             if (state.graph.vertices.size < 1) {
                 alert('Граф пуст');
@@ -1769,6 +1789,89 @@
             state.algoNext = state.dfsStack.length ? state.dfsStack[state.dfsStack.length - 1] : null;
 
             render();
+        }
+
+        // Связность
+        function findConnectedComponents() {
+            const vertices = Array.from(state.graph.vertices.keys());
+            if (vertices.length === 0) {
+                alert('Граф пуст');
+                return;
+            }
+
+            // Сохраняем исходные цвета, если ещё не сохранены
+            const originalColors = new Map();
+            state.graph.vertices.forEach((v, id) => {
+                originalColors.set(id, v.color);
+            });
+            state.componentsOriginalColors = originalColors;
+
+            const visited = new Set();
+            const components = [];
+
+            // Обход (используем BFS/DFS, рассматривая граф как неориентированный) [web:187]
+            for (const start of vertices) {
+                if (visited.has(start)) continue;
+                const queue = [start];
+                const component = [];
+
+                visited.add(start);
+                while (queue.length > 0) {
+                    const v = queue.shift();
+                    component.push(v);
+
+                    for (const edge of state.graph.edges) {
+                        let neighbor = null;
+                        if (edge.from === v) neighbor = edge.to;
+                        else if (!edge.isDirected && edge.to === v) neighbor = edge.from;
+
+                        if (neighbor !== null && !visited.has(neighbor)) {
+                            visited.add(neighbor);
+                            queue.push(neighbor);
+                        }
+                    }
+                }
+
+                components.push(component);
+            }
+
+            // Палитра цветов для компонент
+            const palette = [
+                '#e6194b', // красный
+                '#3cb44b', // зелёный
+                '#4363d8', // синий
+                '#f58231', // оранжевый
+                '#911eb4', // фиолетовый
+                '#46f0f0', // бирюзовый
+                '#f032e6', // розовый
+                '#bcf60c', // салатовый
+                '#fabebe', // светло-розовый
+                '#008080'  // тёмный бирюзовый
+            ];
+
+            // Красим каждую компоненту в свой цвет
+            components.forEach((comp, index) => {
+                const color = palette[index % palette.length];
+                comp.forEach(id => {
+                    const v = state.graph.vertices.get(id);
+                    if (v) v.color = color;
+                });
+            });
+
+            // Обновляем визуализацию
+            state.algoCurrent = null;
+            state.algoNext = null;
+            render();
+
+            // Показываем список компонент
+            const compStr = components
+                .map((comp, i) =>
+                    `${i + 1}: {` + comp
+                        .map(id => state.graph.vertices.get(id)?.label || id)
+                        .join(', ') + '}')
+                .join('\n');
+            alert('Компоненты связности:\n' + compStr +
+                '\n\nНажмите пробел, чтобы вернуть исходные цвета.');
         }
 
 
