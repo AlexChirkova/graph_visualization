@@ -300,6 +300,7 @@
                 <button class="btn" id="forceLayoutBtn">Упорядоченный</button>
                 <button class="btn" id="circleLayoutBtn">Круглый</button>
                 <button class="btn" id="gridLayoutBtn">Сетка</button>
+                <button class="btn" id="treeLayoutBtn">Дерево</button>
             </div>
 
             <div class="toolbar-section">
@@ -411,7 +412,7 @@
     </div>
 
     <!-- Модальные окна -->
-    <!--ДОбавление вершины-->
+    <!--Добавление вершины-->
      <div id="addVertexModal" class="modal">
         <div class="modal-content">
             <h2>Добавить вершину</h2>
@@ -422,6 +423,20 @@
             <div class="modal-buttons">
                 <button class="btn" onclick="closeAddVertexModal()">Отмена</button>
                 <button class="btn primary" onclick="confirmAddVertex()">Добавить</button>
+            </div>
+        </div>
+    </div>
+    <!--Дерево-->
+    <div id="treeModal" class="modal">
+        <div class="modal-content">
+            <h2>Дерево</h2>
+            <div class="form-group">
+            <label>Выберите вершину-корень:</label>
+            <select id="treeRootVertex" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+            <button class="btn" onclick="closeTreeModal()">Отмена</button>
+            <button class="btn primary" onclick="applyTreeLayout()">Применить</button>
             </div>
         </div>
     </div>
@@ -807,6 +822,9 @@
             gridLayout();
             render();
         });
+
+        document.getElementById('treeLayoutBtn').addEventListener('click', openTreeLayoutModal);
+
 
         // Алгоритмы
         document.getElementById('dijkstraBtn').addEventListener('click', openDijkstraModal);
@@ -1282,6 +1300,111 @@
                 vertex.y = (Math.floor(i / cols) - cols / 2) * spacing;
             });
         }
+
+        function openTreeLayoutModal() {
+            if (state.graph.vertices.size === 0) {
+                alert('Граф пуст');
+                return;
+            }
+
+            const select = document.getElementById('treeRootVertex');
+            select.innerHTML = '';
+
+            for (let [id, v] of state.graph.vertices) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = v.label || id;
+                select.appendChild(opt);
+            }
+
+            document.getElementById('treeModal').classList.add('active');
+        }
+
+        function closeTreeModal() {
+            document.getElementById('treeModal').classList.remove('active');
+        }
+
+        function applyTreeLayout() {
+            const rootId = document.getElementById('treeRootVertex').value;
+            closeTreeModal();  // сразу скрываем модалку
+
+            if (!state.graph.vertices.has(rootId)) return;
+
+            // 1. Строим уровни (BFS по неориентированному графу)
+            const levels = [];                      // levels[depth] = [vertexIds]
+            const levelMap = new Map();            // id -> depth
+            const visited = new Set();
+            const queue = [rootId];
+
+            visited.add(rootId);
+            levelMap.set(rootId, 0);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                const depth = levelMap.get(current);
+
+                if (!levels[depth]) levels[depth] = [];
+                levels[depth].push(current);
+
+                for (const edge of state.graph.edges) {
+                    let neighbor = null;
+                    if (edge.from === current) neighbor = edge.to;
+                    else if (!edge.isDirected && edge.to === current) neighbor = edge.from;
+
+                    if (neighbor !== null && !visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        levelMap.set(neighbor, depth + 1);
+                        queue.push(neighbor);
+                    }
+                }
+            }
+
+            // 2. Раскладываем по уровню: корень сверху, дети ниже
+            const levelHeight = 150; // вертикальный шаг между уровнями
+            const nodeSpacing = 120; // горизонтальный шаг между вершинами
+
+            levels.forEach((level, depth) => {
+                const y = depth * levelHeight;
+
+                const totalWidth = (level.length - 1) * nodeSpacing;
+                let x = -totalWidth / 2;
+
+                level.forEach(id => {
+                    const v = state.graph.vertices.get(id);
+                    if (v) {
+                        v.x = x;
+                        v.y = y;
+                    }
+                    x += nodeSpacing;
+                });
+            });
+
+            // 3. Для вершин, не достигнутых от корня (если граф несвязный),
+            // просто разложим их под последним уровнем отдельным слоем
+            const notPlaced = [];
+            for (let [id] of state.graph.vertices) {
+                if (!visited.has(id)) notPlaced.push(id);
+            }
+
+            if (notPlaced.length > 0) {
+                const depth = levels.length; // следующий уровень
+                const y = depth * levelHeight;
+                const totalWidth = (notPlaced.length - 1) * nodeSpacing;
+                let x = -totalWidth / 2;
+
+                notPlaced.forEach(id => {
+                    const v = state.graph.vertices.get(id);
+                    if (v) {
+                        v.x = x;
+                        v.y = y;
+                    }
+                    x += nodeSpacing;
+                });
+            }
+
+            render();
+        }
+
 
         // ============ АЛГОРИТМЫ ============
 
