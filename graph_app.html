@@ -2211,6 +2211,25 @@
 
                 const size = lines.length;
 
+                // Проверка введенных весов
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < lines[i].length; j++) {
+                        const value = lines[i][j];
+
+                        if (value === 0) continue;
+
+                        if (!Number.isFinite(value)) {
+                            alert(`Значение в строке ${i + 1}, столбце ${j + 1} не является числом.`);
+                            return;
+                        }
+
+                        if (value < -100 || value > 100) {
+                            alert(`Вес в строке ${i + 1}, столбце ${j + 1} должен быть в диапазоне от -100 до 100.`);
+                            return;
+                        }
+                    }
+                }
+
                 // Проверка корректности матрицы
                 for (let line of lines) {
                     if (line.length !== size) {
@@ -2225,7 +2244,7 @@
                     Array.from({length: size}, (_, i) => `V${i}`);
 
                 if (labels.length !== size) {
-                    alert(`Количество метак (${labels.length}) не совпадает с размером матрицы (${size})`);
+                    alert(`Количество меток (${labels.length}) не совпадает с размером матрицы (${size})`);
                     return;
                 }
 
