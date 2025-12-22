@@ -587,7 +587,13 @@ function updatePropertiesPanel() {
         const vertex = state.graph.vertices.get(state.selectedVertex);
         document.getElementById('vertexLabel').value = vertex.label;
         document.getElementById('vertexColor').value = vertex.color;
-        document.getElementById('vertexRadius').value = vertex.radius;
+        if (vertex.radius < 51 && vertex.radius > 9){
+            document.getElementById('vertexRadius').value = vertex.radius;
+        }
+        else{
+            document.getElementById('vertexRadius').value = 25;
+        }
+       
 
         noSelection.classList.add('hidden');
         vertexProps.classList.remove('hidden');
