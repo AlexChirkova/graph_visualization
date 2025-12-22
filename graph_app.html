@@ -383,7 +383,7 @@
 
                 <div class="property-group">
                     <label class="property-label">Вес</label>
-                    <input type="number" id="edgeWeight" class="form-control" min="0" step="0.1" value="1">
+                    <input type="number" id="edgeWeight" class="form-control" min="-0" max="100" step="1" value="1">
                 </div>
 
                 <div class="property-group">
@@ -410,7 +410,7 @@
                 • Правый клик на вершину — удалить<br>
                 • Перетаскивание — перемещение<br>
                 • Скролл — масштаб <br>
-                • Shift — отключить подсветку алгоритмов
+                • Shift — отключить подсветку после алгоритмов
             </div>
         </div>
     </div>
@@ -1460,79 +1460,6 @@
             document.getElementById('dijkstraModal').classList.remove('active');
         }
 
-        /*function runDijkstra() {
-            const start = document.getElementById('startVertex').value;
-            const end = document.getElementById('endVertex').value;
-
-            const distances = new Map();
-            const previous = new Map();
-            const unvisited = new Set();
-
-            for (let [id] of state.graph.vertices) {
-                distances.set(id, id === start ? 0 : Infinity);
-                previous.set(id, null);
-                unvisited.add(id);
-            }
-
-            while (unvisited.size > 0) {
-                let current = null;
-                let minDist = Infinity;
-
-                for (let id of unvisited) {
-                    if (distances.get(id) < minDist) {
-                        minDist = distances.get(id);
-                        current = id;
-                    }
-                }
-
-                if (current === null || distances.get(current) === Infinity) break;
-
-                unvisited.delete(current);
-
-                for (let edge of state.graph.edges) {
-                    if (edge.from === current && unvisited.has(edge.to)) {
-                        const alt = distances.get(current) + edge.weight;
-                        if (alt < distances.get(edge.to)) {
-                            distances.set(edge.to, alt);
-                            previous.set(edge.to, current);
-                        }
-                    }
-                }
-            }
-
-            // Восстановление пути
-            const path = [];
-            let current = end;
-            while (current !== null) {
-                path.unshift(current);
-                current = previous.get(current);
-            }
-
-            if (path[0] !== start) {
-                alert('Пути не существует');
-                closeDijkstraModal();
-                return;
-            }
-
-            state.highlightedVertices = path;
-            state.highlightedPath = [];
-
-            for (let i = 0; i < path.length - 1; i++) {
-                for (let j = 0; j < state.graph.edges.length; j++) {
-                    const edge = state.graph.edges[j];
-                    if ((edge.from === path[i] && edge.to === path[i + 1]) ||
-                        (!edge.isDirected && edge.from === path[i + 1] && edge.to === path[i])) {
-                        state.highlightedPath.push(j);
-                        break;
-                    }
-                }
-            }
-
-            alert(`Кратчайший путь найден!\nДистанция: ${distances.get(end)}\nПуть: ${path.join(' → ')}`);
-            closeDijkstraModal();
-            render();
-        }*/
-
         function startDijkstraVisualization() {
             closeDijkstraModal();
             
@@ -1697,35 +1624,6 @@
             document.getElementById('bfsModal').classList.remove('active');
         }
 
-        /*function runBFS() {
-            const start = document.getElementById('bfsStartVertex').value;
-            const visited = new Set();
-            const queue = [start];
-            const order = [];
-
-            while (queue.length > 0) {
-                const current = queue.shift();
-                if (visited.has(current)) continue;
-                visited.add(current);
-                order.push(current);
-
-                for (let edge of state.graph.edges) {
-                    if (edge.from === current && !visited.has(edge.to)) {
-                        queue.push(edge.to);
-                    } else if (!edge.isDirected && edge.to === current && !visited.has(edge.from)) {
-                        queue.push(edge.from);
-                    }
-                }
-            }
-
-            state.highlightedVertices = order;
-            state.highlightedPath = [];
-            const pathStr = order.map(id => state.graph.vertices.get(id).label || id).join(' → ');
-            alert('BFS обход: ' + pathStr);
-            closeBfsModal();
-            render();
-        }*/
-
         function startBfsVisualization() {
             closeBfsModal();
             
@@ -1821,34 +1719,6 @@
         function closeDfsModal() {
             document.getElementById('dfsModal').classList.remove('active');
         }
-
-        /*function runDFS() {
-            const start = document.getElementById('dfsStartVertex').value;
-            const visited = new Set();
-            const order = [];
-
-            function dfs(vertex) {
-                visited.add(vertex);
-                order.push(vertex);
-
-                for (let edge of state.graph.edges) {
-                    if (edge.from === vertex && !visited.has(edge.to)) {
-                        dfs(edge.to);
-                    } else if (!edge.isDirected && edge.to === vertex && !visited.has(edge.from)) {
-                        dfs(edge.from);
-                    }
-                }
-            }
-
-            dfs(start);
-
-            state.highlightedVertices = order;
-            state.highlightedPath = [];
-            const pathStr = order.map(id => state.graph.vertices.get(id).label || id).join(' → ');
-            alert('DFS обход: ' + pathStr);
-            closeDfsModal();
-            render();
-        }*/
 
         function startDfsVisualization() {
             closeDfsModal();
@@ -2223,8 +2093,8 @@
                             return;
                         }
 
-                        if (value < -100 || value > 100) {
-                            alert(`Вес в строке ${i + 1}, столбце ${j + 1} должен быть в диапазоне от -100 до 100.`);
+                        if (value < 0 || value > 100) {
+                            alert(`Вес в строке ${i + 1}, столбце ${j + 1} должен быть в диапазоне от 0 до 100.`);
                             return;
                         }
                     }
