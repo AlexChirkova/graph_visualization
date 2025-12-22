@@ -494,10 +494,25 @@ document.getElementById('vertexColor').addEventListener('change', (e) => {
 });
 
 document.getElementById('vertexRadius').addEventListener('change', (e) => {
-    if (state.selectedVertex) {
-        state.graph.vertices.get(state.selectedVertex).radius = parseInt(e.target.value);
-        render();
+    if (!state.selectedVertex) return;
+
+    let value = parseFloat(e.target.value);
+
+    if (!Number.isFinite(value)) {
+        alert('Радиус должен быть числом.');
+        e.target.value = 10;
+        value = 10;
     }
+
+    // ограничиваем диапазон [10, 50]
+    if (value < 10) value = 10;
+    if (value > 50) value = 50;
+
+    e.target.value = value;
+
+    const vertex = state.graph.vertices.get(state.selectedVertex);
+    vertex.radius = value;
+    render();
 });
 
 document.getElementById('edgeLabel').addEventListener('change', (e) => {
@@ -587,13 +602,7 @@ function updatePropertiesPanel() {
         const vertex = state.graph.vertices.get(state.selectedVertex);
         document.getElementById('vertexLabel').value = vertex.label;
         document.getElementById('vertexColor').value = vertex.color;
-        if (vertex.radius < 51 && vertex.radius > 9){
-            document.getElementById('vertexRadius').value = vertex.radius;
-        }
-        else{
-            document.getElementById('vertexRadius').value = 25;
-        }
-       
+        document.getElementById('vertexRadius').value = vertex.radius;
 
         noSelection.classList.add('hidden');
         vertexProps.classList.remove('hidden');
