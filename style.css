@@ -1,0 +1,279 @@
+:root {
+        --color-primary: #208141;
+        --color-primary-hover: #1a6633;
+        --color-primary-active: #145029;
+        --color-text: #1f2121;
+        --color-text-secondary: #626c7c;
+        --color-bg: #fcfcf9;
+        --color-surface: #ffffff;
+        --color-border: #ae5240;
+        --color-error: #c0152f;
+        --color-success: #208141;
+        --color-warning: #a84b2f;
+        --focus-ring: 0 0 0 3px rgba(32, 129, 65, 0.4);
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background-color: var(--color-bg);
+        color: var(--color-text);
+    }
+
+    .container {
+        display: flex;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    .toolbar {
+        width: 280px;
+        background-color: var(--color-surface);
+        border-right: 1px solid var(--color-border);
+        padding: 16px;
+        overflow-y: auto;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .toolbar h2 {
+        margin: 0 0 16px 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .toolbar-section {
+        margin-bottom: 24px;
+    }
+
+    .toolbar-section h3 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        background-color: var(--color-surface);
+        color: var(--color-text);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover {
+        background-color: rgba(32, 129, 65, 0.08);
+        border-color: var(--color-primary);
+    }
+
+    .btn:active {
+        /* background-color: rgba(32, 129, 65, 0.15); */
+        background-color: var(--color-primary);
+    }
+
+    .btn:focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+    }
+
+    .btn.primary {
+        background-color: var(--color-primary);
+        color: #fcfcf9;
+        border-color: var(--color-primary);
+    }
+
+    .btn.primary:hover {
+        background-color: var(--color-primary-hover);
+    }
+
+    .btn.primary:active {
+        background-color: var(--color-primary-active);
+    }
+
+    .disabled-btn {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .canvas-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .top-toolbar {
+        background-color: var(--color-surface);
+        border-bottom: 1px solid var(--color-border);
+        padding: 12px 16px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .top-toolbar button {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    canvas {
+        flex: 1;
+        background-color: var(--color-bg);
+        cursor: default;
+        display: block;
+    }
+
+    .properties-panel {
+        width: 250px;
+        background-color: var(--color-surface);
+        border-left: 1px solid var(--color-border);
+        padding: 16px;
+        overflow-y: auto;
+        box-shadow: -1px 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .property-group {
+        margin-bottom: 16px;
+    }
+
+    .property-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        font-size: 13px;
+        font-family: inherit;
+        transition: border-color 150ms;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: var(--focus-ring);
+    }
+
+    .color-picker {
+        width: 100%;
+        height: 40px;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .info-box {
+        background-color: rgba(32, 129, 65, 0.08);
+        border: 1px solid rgba(32, 129, 65, 0.2);
+        border-radius: 6px;
+        padding: 12px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--color-text);
+    }
+
+    .divider {
+        height: 1px;
+        background-color: var(--color-border);
+        margin: 16px 0;
+        opacity: 0.3;
+    }
+
+    .status-bar {
+        background-color: var(--color-surface);
+        border-top: 1px solid var(--color-border);
+        padding: 8px 16px;
+        font-size: 12px;
+        color: var(--color-text-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .tooltip {
+        position: absolute;
+        background-color: rgba(31, 33, 33, 0.9);
+        color: #fcfcf9;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        max-width: 200px;
+        word-wrap: break-word;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background-color: var(--color-surface);
+        border-radius: 10px;
+        padding: 24px;
+        max-width: 400px;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content h2 {
+        margin: 0 0 16px 0;
+    }
+
+    .modal-content .form-group {
+        margin-bottom: 16px;
+    }
+
+    .modal-content label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        font-size: 13px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .modal-buttons button {
+        flex: 1;
+        padding: 10px;
+    }
+
+    .hidden {
+        display: none;
+    }
