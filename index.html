@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Визуализация графов</title>
+</head>
+<body>
+    <div class="container">
+        <!-- Левая панель инструментов -->
+        <div class="toolbar">
+            <h2>Граф</h2>
+
+            <div class="toolbar-section">
+                <h3>Операции</h3>
+                <button class="btn" id="addVertexBtn" title="Добавить вершину (V)">Добавить вершину</button>
+                <button class="btn" id="addEdgeBtn" title="Добавить ребро (E)">Добавить ребро</button>
+                <button class="btn" id="deleteBtn" title="Удалить (Del)">Удалить элемент</button>
+                <button class="btn" id="clearBtn" title="Очистить граф">Очистить граф</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Макет</h3>
+                <button class="btn" id="forceLayoutBtn">Упорядоченный</button>
+                <button class="btn" id="circleLayoutBtn">Круглый</button>
+                <button class="btn" id="gridLayoutBtn">Сетка</button>
+                <button class="btn" id="treeLayoutBtn">Дерево</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Алгоритмы</h3>
+                <button class="btn" id="dijkstraBtn">Кратчайший путь (Дейкстра)</button>
+                <button class="btn" id="bfsBtn">BFS обход</button>
+                <button class="btn" id="dfsBtn">DFS обход</button>
+                <button class="btn" id="componentsBtn">Компоненты связности</button>
+                <button class="btn" id="cutVertexBtn">Шарниры</button>
+                <button class="btn" id="bridgeBtn">Мосты</button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Матрица</h3>
+                <button class="btn" id="loadMatrixBtn">Загрузить из матрицы</button>
+                <button class="btn" id="saveMatrixBtn">Сохранить в матрицу</button>
+            </div>
+
+
+            <div class="toolbar-section">
+                <h3>Файл</h3>
+                <button class="btn" id="saveBtn">Сохранить JSON</button>
+                <button class="btn" id="loadBtn">Загрузить JSON</button>
+                <button class="btn" id="exportBtn">Экспорт PNG</button>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+            </div>
+        </div>
+
+        <!-- Рабочая область -->
+        <div class="canvas-wrapper">
+            <!-- Верхняя панель -->
+            <div class="top-toolbar">
+                <button class="btn" id="zoomInBtn" title="Увеличить (Ctrl++)">🔍+</button>
+                <button class="btn" id="zoomOutBtn" title="Уменьшить (Ctrl+-)">🔍−</button>
+                <button class="btn" id="resetZoomBtn" title="Сброс масштаба">Сброс</button>
+                <span id="zoomLevel" style="margin-left: auto; color: var(--color-text-secondary); font-size: 12px;">100%</span>
+            </div>
+            <div id="algorithmStatus"
+                style="display:none; padding:4px 12px; font-size:12px; color:#c0152f;">
+            </div>
+
+            <!-- Canvas -->
+            <canvas id="graphCanvas"></canvas>
+
+            <!-- Статус-бар -->
+            <div class="status-bar">
+                <span id="vertexCount">Вершин: 0</span>
+                <span id="edgeCount">Рёбер: 0</span>
+                <span id="mousePos">Позиция: —</span>
+            </div>
+        </div>
+
+        <!-- Правая панель свойств -->
+        <div class="properties-panel">
+            <h2 style="margin-top: 0;">Свойства</h2>
+
+            <div id="noSelection" class="info-box">
+                Выберите элемент графа для редактирования его свойств.
+            </div>
+            
+            <div id="vertexProperties" class="hidden">
+                <div class="property-group">
+                    <label class="property-label">Метка вершины</label>
+                    <input type="text" id="vertexLabel" class="form-control" placeholder="A, B, C...">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Цвет</label>
+                    <input type="color" id="vertexColor" class="color-picker" value="#208141">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Радиус</label>
+                    <input type="number" id="vertexRadius" class="form-control" min="10" max="50" value="25">
+                </div>
+            </div>
+
+            <div id="edgeProperties" class="hidden">
+                <div class="property-group">
+                    <label class="property-label">Метка ребра</label>
+                    <input type="text" id="edgeLabel" class="form-control" placeholder="Вес, расстояние...">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Вес</label>
+                    <input type="number" id="edgeWeight" class="form-control" min="-0" max="100" step="1" value="1">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Цвет</label>
+                    <input type="color" id="edgeColor" class="color-picker" value="#626c7c">
+                </div>
+
+                <div class="property-group">
+                    <label class="property-label">Толщина</label>
+                    <input type="number" id="edgeWidth" class="form-control" min="1" max="5" value="2">
+                </div>
+
+                <div class="property-group">
+                    <label>
+                        <input type="checkbox" id="isDirected"> Ориентированное
+                    </label>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="info-box">
+                <strong>Справка:</strong><br>
+                • Левый клик — выбрать<br>
+                • Правый клик на вершину — удалить<br>
+                • Перетаскивание — перемещение<br>
+                • Скролл — масштаб <br>
+                • Shift — отключить подсветку после алгоритмов
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <!--Добавление вершины-->
+     <div id="addVertexModal" class="modal">
+        <div class="modal-content">
+            <h2>Добавить вершину</h2>
+            <div class="form-group">
+                <label>Введите метку вершины:</label>
+                <input type="text" id="vertexLabelInput" class="form-control" placeholder="A, B, C..." autofocus>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeAddVertexModal()">Отмена</button>
+                <button class="btn primary" onclick="confirmAddVertex()">Добавить</button>
+            </div>
+        </div>
+    </div>
+    <!--Дерево-->
+    <div id="treeModal" class="modal">
+        <div class="modal-content">
+            <h2>Дерево</h2>
+            <div class="form-group">
+            <label>Выберите вершину-корень:</label>
+            <select id="treeRootVertex" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+            <button class="btn" onclick="closeTreeModal()">Отмена</button>
+            <button class="btn primary" onclick="applyTreeLayout()">Применить</button>
+            </div>
+        </div>
+    </div>
+    <!--Алгоритмы обхода-->
+    <div id="dijkstraModal" class="modal">
+        <div class="modal-content">
+            <h2>Кратчайший путь (Дейкстра)</h2>
+            <div class="form-group">
+                <label>Стартовая вершина:</label>
+                <select id="startVertex" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Конечная вершина:</label>
+                <select id="endVertex" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="djModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (сек):</label>
+                <input type="number" id="djDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeDijkstraModal()">Отмена</button>
+                <button class="btn primary" onclick="startDijkstraVisualization()">Найти путь</button>
+            </div>
+        </div>
+    </div>
+    <div id="bfsModal" class="modal">
+        <div class="modal-content">
+            <h2>BFS обход</h2>
+            <div class="form-group">
+                <label>Выберите стартовую вершину:</label>
+                <select id="bfsStartVertex" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="bfsModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (секунды, для авто):</label>
+                <input type="number" id="bfsDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeBfsModal()">Отмена</button>
+                <button class="btn primary" onclick="startBfsVisualization()">Начать обход</button>
+            </div>
+        </div>
+    </div>
+    <div id="dfsModal" class="modal">
+        <div class="modal-content">
+            <h2>DFS обход</h2>
+            <div class="form-group">
+                <label>Выберите стартовую вершину:</label>
+                <select id="dfsStartVertex" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="dfsModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (сек):</label>
+                <input type="number" id="dfsDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeDfsModal()">Отмена</button>
+                <button class="btn primary" onclick="startDfsVisualization()">Начать обход</button>
+            </div>
+        </div>
+    </div>
+    <!--Создание матрицы весов-->
+    <div id="matrixModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>Загрузить граф из матрицы весов</h2>
+            <div class="form-group">
+                <label>Введите матрицу весов (разделители: пробел/табуляция, строки через перевод строки):</label>
+                <textarea id="matrixInput" class="form-control" style="height: 250px; font-family: monospace;" placeholder="1 0 5 0&#10;0 2 3 4&#10;5 3 0 1&#10;0 4 1 0"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Метки вершин (разделены запятыми):</label>
+                <input type="text" id="vertexLabelsInput" class="form-control" placeholder="A, B, C, D">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isDirectedMatrixInput"> Ориентированный граф
+                </label>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="closeMatrixModal()">Отмена</button>
+                <button class="btn primary" onclick="confirmLoadMatrix()">Загрузить</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>
