@@ -109,6 +109,11 @@
             background-color: var(--color-primary-active);
         }
 
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .canvas-wrapper {
             flex: 1;
             display: flex;
@@ -337,6 +342,9 @@
                 <button class="btn" id="zoomOutBtn" title="Уменьшить (Ctrl+-)">🔍−</button>
                 <button class="btn" id="resetZoomBtn" title="Сброс масштаба">Сброс</button>
                 <span id="zoomLevel" style="margin-left: auto; color: var(--color-text-secondary); font-size: 12px;">100%</span>
+            </div>
+            <div id="algorithmStatus"
+                style="display:none; padding:4px 12px; font-size:12px; color:#c0152f;">
             </div>
 
             <!-- Canvas -->
@@ -649,6 +657,8 @@
             
             // Связность
             componentsOriginalColors: null,
+
+            isVisualizationRunning: false,
         };
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
@@ -923,6 +933,10 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
+            if (state.isVisualizationRunning) {
+                // во время визуализации игнорируем попытки редактирования
+                return;
+            }
             const rect = canvas.getBoundingClientRect();
             const canvasX = (e.clientX - rect.left - canvas.width / 2) / state.zoom - state.offsetX;
             const canvasY = (e.clientY - rect.top - canvas.height / 2) / state.zoom - state.offsetY;
@@ -1175,6 +1189,77 @@
             const dx = px - xx;
             const dy = py - yy;
             return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Блокировка редактирования и опасных кнопок
+        function startVisualizationMode(label) {
+            state.isVisualizationRunning = true;
+
+            // Запрещаем режимы редактирования
+            state.mode = 'select';
+            state.edgeFrom = null;
+            state.selectedVertex = null;
+            state.selectedEdge = null;
+            updatePropertiesPanel();
+
+            // Блокируем кнопки редактирования графа
+            const toDisable = [
+                '#addVertexBtn',
+                '#addEdgeBtn',
+                '#deleteBtn',
+                '#clearBtn',
+                '#forceLayoutBtn',
+                '#circleLayoutBtn',
+                '#gridLayoutBtn',
+                '#treeLayoutBtn',
+                '#loadJsonBtn',
+                '#loadMatrixBtn' // если есть
+            ];
+
+            toDisable.forEach(sel => {
+                document.querySelectorAll(sel).forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('disabled-btn');
+                });
+            });
+
+            // Показываем пользователю активный режим (простая строка над холстом)
+            const status = document.getElementById('algorithmStatus');
+            if (status) {
+                status.textContent = `Выполняется визуализация: ${label}`;
+                status.style.display = 'block';
+            }
+        }
+
+        // Выключить режим визуализации: вернуть всё как было
+        function stopVisualizationMode() {
+            state.isVisualizationRunning = false;
+
+            const toDisable = [
+                '#addVertexBtn',
+                '#addEdgeBtn',
+                '#deleteBtn',
+                '#clearBtn',
+                '#forceLayoutBtn',
+                '#circleLayoutBtn',
+                '#gridLayoutBtn',
+                '#treeLayoutBtn',
+                '#loadJsonBtn',
+                '#loadMatrixBtn'
+            ];
+
+            toDisable.forEach(sel => {
+                document.querySelectorAll(sel).forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled-btn');
+                });
+            });
+
+            const status = document.getElementById('algorithmStatus');
+            if (status) {
+                status.textContent = '';
+                status.style.display = 'none';
+            }
         }
 
         // ============ ДОБАВЛЕНИЕ ВЕРШИНЫ ============
@@ -1462,7 +1547,8 @@
 
         function startDijkstraVisualization() {
             closeDijkstraModal();
-            
+            startVisualizationMode('Кратчайший путь (Дейкстра)');
+
             const start = document.getElementById('startVertex').value;
             const end = document.getElementById('endVertex').value;
             const mode = document.getElementById('djModeSelect').value;
@@ -1598,6 +1684,7 @@
             state.algoMode = 'off';
             state.algoStepMode = 'off';
             render();
+            stopVisualizationMode();
         }
 
         // Обход в ширину
@@ -1626,6 +1713,8 @@
 
         function startBfsVisualization() {
             closeBfsModal();
+            startVisualizationMode('BFS обход');
+
             
             const start = document.getElementById('bfsStartVertex').value;
             const mode = document.getElementById('bfsModeSelect').value;
@@ -1666,6 +1755,7 @@
                 state.algoCurrent = null;
                 state.algoNext = null;
                 render();
+                stopVisualizationMode();
 
                 const labels = state.bfsOrder.map(id => state.graph.vertices.get(id).label || id);
                 alert('BFS порядок: ' + labels.join(' → '));
@@ -1722,6 +1812,7 @@
 
         function startDfsVisualization() {
             closeDfsModal();
+            startVisualizationMode('DFS обход');
 
             const start = document.getElementById('dfsStartVertex').value;
             const mode = document.getElementById('dfsModeSelect').value;
@@ -1761,6 +1852,7 @@
                 state.algoCurrent = null;
                 state.algoNext = null;
                 render();
+                stopVisualizationMode();
 
                 const labels = state.dfsOrder.map(id => state.graph.vertices.get(id).label || id);
                 alert('DFS порядок: ' + labels.join(' → '));
