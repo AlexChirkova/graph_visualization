@@ -494,25 +494,10 @@ document.getElementById('vertexColor').addEventListener('change', (e) => {
 });
 
 document.getElementById('vertexRadius').addEventListener('change', (e) => {
-    if (!state.selectedVertex) return;
-
-    let value = parseFloat(e.target.value);
-
-    if (!Number.isFinite(value)) {
-        alert('Радиус должен быть числом.');
-        e.target.value = 10;
-        value = 10;
+    if (state.selectedVertex) {
+        state.graph.vertices.get(state.selectedVertex).radius = parseInt(e.target.value);
+        render();
     }
-
-    // ограничиваем диапазон [10, 50]
-    if (value < 10) value = 10;
-    if (value > 50) value = 50;
-
-    e.target.value = value;
-
-    const vertex = state.graph.vertices.get(state.selectedVertex);
-    vertex.radius = value;
-    render();
 });
 
 document.getElementById('edgeLabel').addEventListener('change', (e) => {
