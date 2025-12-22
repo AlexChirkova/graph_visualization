@@ -412,6 +412,7 @@
     </div>
 
     <!-- Модальные окна -->
+    <!--ДОбавление вершины-->
      <div id="addVertexModal" class="modal">
         <div class="modal-content">
             <h2>Добавить вершину</h2>
@@ -425,6 +426,7 @@
             </div>
         </div>
     </div>
+    <!--Алгоритмы обхода-->
     <div id="dijkstraModal" class="modal">
         <div class="modal-content">
             <h2>Кратчайший путь (Дейкстра)</h2>
@@ -436,9 +438,21 @@
                 <label>Конечная вершина:</label>
                 <select id="endVertex" class="form-control"></select>
             </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="djModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (сек):</label>
+                <input type="number" id="djDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
             <div class="modal-buttons">
                 <button class="btn" onclick="closeDijkstraModal()">Отмена</button>
-                <button class="btn primary" onclick="runDijkstra()">Найти путь</button>
+                <button class="btn primary" onclick="startDijkstraVisualization()">Найти путь</button>
             </div>
         </div>
     </div>
@@ -449,9 +463,21 @@
                 <label>Выберите стартовую вершину:</label>
                 <select id="bfsStartVertex" class="form-control"></select>
             </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="bfsModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (секунды, для авто):</label>
+                <input type="number" id="bfsDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
             <div class="modal-buttons">
                 <button class="btn" onclick="closeBfsModal()">Отмена</button>
-                <button class="btn primary" onclick="runBFS()">Начать обход</button>
+                <button class="btn primary" onclick="startBfsVisualization()">Начать обход</button>
             </div>
         </div>
     </div>
@@ -462,12 +488,25 @@
                 <label>Выберите стартовую вершину:</label>
                 <select id="dfsStartVertex" class="form-control"></select>
             </div>
+            <div class="form-group">
+                <label>Режим:</label>
+                <select id="dfsModeSelect" class="form-control">
+                    <option value="space">Шаг по пробелу</option>
+                    <option value="auto">Автоматически по таймеру</option>
+                </select>
+                </div>
+                <div class="form-group">
+                <label>Интервал (сек):</label>
+                <input type="number" id="dfsDelayInput" class="form-control"
+                        min="0.1" step="0.1" value="1">
+                </div>
             <div class="modal-buttons">
                 <button class="btn" onclick="closeDfsModal()">Отмена</button>
-                <button class="btn primary" onclick="runDFS()">Начать обход</button>
+                <button class="btn primary" onclick="startDfsVisualization()">Начать обход</button>
             </div>
         </div>
     </div>
+    <!--Создание матрицы весов-->
     <div id="matrixModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <h2>Загрузить граф из матрицы весов</h2>
@@ -555,13 +594,40 @@
             edgeFrom: null,
             highlightedPath: [],
             highlightedVertices: [],
+            // координаты для создания новой вершины
             pendingVertexX: 0, 
             pendingVertexY: 0,
+            // панорамирование
             isPanning: false,
             panStartX: 0,
             panStartY: 0,
             panOffsetX: 0,
-            panOffsetY: 0
+            panOffsetY: 0,
+            // визуализация алгоритмов
+            algoMode: 'off',       // 'off', 'bfs', 'dfs', 'dijkstra'
+            algoStepMode: 'off',   // 'off', 'space', 'auto'
+            algoDelay: 1000,       // мс
+            algoTimerId: null,
+
+            // для подсветки
+            algoCurrent: null,     // текущая вершина (красная)
+            algoNext: null,        // следующая (розовая)
+
+            // BFS
+            bfsQueue: [],
+            bfsVisited: new Set(),
+            bfsOrder: [],
+
+            // DFS
+            dfsStack: [],
+            dfsVisited: new Set(),
+            dfsOrder: [],
+
+            // Дейкстра
+            djUnvisited: new Set(),
+            djDistances: new Map(),
+            djPrevious: new Map(),
+            djOrder: [],           
         };
 
         // ============ ИНИЦИАЛИЗАЦИЯ ============
@@ -605,7 +671,19 @@
             const isSelected = state.selectedVertex === vertex.id;
             const isHighlighted = state.highlightedVertices.includes(vertex.id);
 
-            ctx.fillStyle = isHighlighted ? '#a84b2f' : vertex.color;
+            const isCurrentAlgo = vertex.id === state.algoCurrent; // текущая вершина алгоритма
+            const isNextAlgo = vertex.id === state.algoNext;       // следующая в очереди/стеке
+
+            // Цвет ЗАЛИВКИ вершины
+            if (isCurrentAlgo) {
+                ctx.fillStyle = '#c0152f';        // красный
+            } else if (isNextAlgo) {
+                ctx.fillStyle = '#f7a3a3';        // бледно-розовый
+            } else if (isHighlighted) {
+                ctx.fillStyle = '#a84b2f';        // твой цвет для пути
+            } else {
+                ctx.fillStyle = vertex.color;     // обычный цвет вершины
+            }
             ctx.beginPath();
             ctx.arc(vertex.x, vertex.y, vertex.radius, 0, Math.PI * 2);
             ctx.fill();
@@ -631,65 +709,6 @@
             const to = state.graph.vertices.get(edge.to);
 
             if (!from || !to) return;
-/*
-            // ===== ПЕТЛЯ (ребро из вершины в неё саму) =====
-            if (edge.from === edge.to) {
-                const isHighlighted = state.highlightedPath.includes(index);
-                const isSelected = state.selectedEdge === index;
-
-                ctx.strokeStyle = isHighlighted ? '#c0152f' : (isSelected ? '#1f2121' : edge.color);
-                ctx.lineWidth = isHighlighted ? 4 : (isSelected ? 3 : edge.width);
-
-                const cx = from.x;
-                const cy = from.y;
-                const r  = from.radius;
-
-                // Петля идёт над вершиной по окружности чуть большего радиуса
-                const loopRadius = r + 6;          // чуть больше вершины, почти «прилипает»
-                const startAngle = Math.PI * 0.15; // справа-снизу
-                const endAngle   = Math.PI * 0.85; // слева-снизу
-
-                ctx.beginPath();
-                ctx.arc(cx, cy, loopRadius, startAngle, endAngle);
-                ctx.stroke();
-
-                // ===== Стрелка для ориентированной петли =====
-                if (edge.isDirected) {
-                    const angle = endAngle; // касательная в конце дуги
-                    const ax = cx + Math.cos(angle) * loopRadius;
-                    const ay = cy + Math.sin(angle) * loopRadius;
-                    const arrowSize = 10;
-
-                    ctx.fillStyle = edge.color;
-                    ctx.beginPath();
-                    ctx.moveTo(ax, ay);
-                    ctx.lineTo(
-                        ax - arrowSize * Math.cos(angle - Math.PI / 6),
-                        ay - arrowSize * Math.sin(angle - Math.PI / 6)
-                    );
-                    ctx.lineTo(
-                        ax - arrowSize * Math.cos(angle + Math.PI / 6),
-                        ay - arrowSize * Math.sin(angle + Math.PI / 6)
-                    );
-                    ctx.closePath();
-                    ctx.fill();
-                }
-
-                // Метка петли (по центру дуги, чуть выше неё)
-                if (edge.label) {
-                    const midAngle = (startAngle + endAngle) / 2;
-                    const labelRadius = loopRadius + 10;
-                    const lx = cx + Math.cos(midAngle) * labelRadius;
-                    const ly = cy + Math.sin(midAngle) * labelRadius;
-
-                    ctx.fillStyle = '#1f2121';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(edge.label, lx, ly);
-                }
-
-                return;
-            }*/
 
             const isHighlighted = state.highlightedPath.includes(index);
             const isSelected = state.selectedEdge === index;
@@ -903,8 +922,8 @@
                 if (!state.edgeFrom && clickedVertex) {
                     // выбираем стартовую вершину для ребра
                     state.edgeFrom = clickedVertex;
-                } else if (state.edgeFrom && clickedVertex) {
-                    // допускаем петлю: from и to могут совпадать
+                } else if (state.edgeFrom && clickedVertex 
+                            && clickedVertex !== state.edgeFrom) {
                     state.graph.addEdge(state.edgeFrom, clickedVertex, 1, '', '#626c7c', 2, false);
                     state.edgeFrom = null;
                     state.mode = 'select';
@@ -920,25 +939,8 @@
                     const edge = state.graph.edges[i];
                     const from = state.graph.vertices.get(edge.from);
                     const to = state.graph.vertices.get(edge.to);
-
-                    if (!from || !to) continue;
-
-                    let hit = false;
-
-                    if (edge.from === edge.to) {
-                        // попадание по петле: просто проверяем расстояние до центра вершины
-                        const dist = Math.hypot(canvasX - from.x, canvasY - from.y);
-                        if (dist > from.radius + 5 && dist < from.radius + 40) {
-                            hit = true;
-                        }
-                    } else {
-                        const dist = pointToLineDistance(canvasX, canvasY, from.x, from.y, to.x, to.y);
-                        if (dist < 10) {
-                            hit = true;
-                        }
-                    }
-
-                    if (hit) {
+                    const dist = pointToLineDistance(canvasX, canvasY, from.x, from.y, to.x, to.y);
+                    if (dist < 10) {
                         state.selectedEdge = i;
                         break;
                     }
@@ -1052,6 +1054,15 @@
             }
         });
 
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && state.algoStepMode === 'space') {
+                e.preventDefault();
+                if (state.algoMode === 'bfs') bfsStep();
+                else if (state.algoMode === 'dfs') dfsStep();
+                else if (state.algoMode === 'dijkstra') dijkstraStep();
+            }
+        });
+
         // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
 
         function updatePropertiesPanel() {
@@ -1110,6 +1121,9 @@
             const dy = py - yy;
             return Math.sqrt(dx * dx + dy * dy);
         }
+
+        // ============ ДОБАВЛЕНИЕ ВЕРШИНЫ ============
+
 
         function openAddVertexModal() {
             const input = document.getElementById('vertexLabelInput');
@@ -1285,7 +1299,7 @@
             document.getElementById('dijkstraModal').classList.remove('active');
         }
 
-        function runDijkstra() {
+        /*function runDijkstra() {
             const start = document.getElementById('startVertex').value;
             const end = document.getElementById('endVertex').value;
 
@@ -1356,6 +1370,146 @@
             alert(`Кратчайший путь найден!\nДистанция: ${distances.get(end)}\nПуть: ${path.join(' → ')}`);
             closeDijkstraModal();
             render();
+        }*/
+
+        function startDijkstraVisualization() {
+            closeDijkstraModal();
+            
+            const start = document.getElementById('startVertex').value;
+            const end = document.getElementById('endVertex').value;
+            const mode = document.getElementById('djModeSelect').value;
+            const delaySec = parseFloat(document.getElementById('djDelayInput').value) || 1;
+
+            if (state.algoTimerId) {
+                clearInterval(state.algoTimerId);
+                state.algoTimerId = null;
+            }
+
+            state.algoMode = 'dijkstra';
+            state.algoStepMode = mode;
+            state.algoDelay = delaySec * 1000;
+
+            state.djDistances = new Map();
+            state.djPrevious = new Map();
+            state.djUnvisited = new Set();
+            state.djOrder = [];
+
+            for (let [id] of state.graph.vertices) {
+                state.djDistances.set(id, id === start ? 0 : Infinity);
+                state.djPrevious.set(id, null);
+                state.djUnvisited.add(id);
+            }
+
+            state.dijkstraStart = start;
+            state.dijkstraEnd = end;
+
+            state.algoCurrent = null;
+            state.algoNext = start;
+
+            //closeDijkstraModal();
+            render();
+
+            if (mode === 'auto') {
+                state.algoTimerId = setInterval(dijkstraStep, state.algoDelay);
+            }
+        }
+
+        function dijkstraStep() {
+            if (state.djUnvisited.size === 0) {
+                finishDijkstra();
+                return;
+            }
+
+            // выбираем вершину с минимальной дистанцией среди непосещённых
+            let current = null;
+            let minDist = Infinity;
+            for (let id of state.djUnvisited) {
+                const d = state.djDistances.get(id);
+                if (d < minDist) {
+                    minDist = d;
+                    current = id;
+                }
+            }
+
+            if (current === null || minDist === Infinity) {
+                // оставшиеся недостижимы
+                finishDijkstra();
+                return;
+            }
+
+            state.djUnvisited.delete(current);
+            state.djOrder.push(current);
+            state.algoCurrent = current;
+
+            // релаксируем соседей
+            for (let edge of state.graph.edges) {
+                let neighbor = null;
+                if (edge.from === current && state.djUnvisited.has(edge.to)) {
+                    neighbor = edge.to;
+                } else if (!edge.isDirected && edge.to === current && state.djUnvisited.has(edge.from)) {
+                    neighbor = edge.from;
+                }
+
+                if (neighbor !== null) {
+                    const alt = state.djDistances.get(current) + edge.weight;
+                    if (alt < state.djDistances.get(neighbor)) {
+                        state.djDistances.set(neighbor, alt);
+                        state.djPrevious.set(neighbor, current);
+                    }
+                }
+            }
+
+            // следующая вершина в очереди (по текущим дистанциям)
+            let next = null;
+            let nextMin = Infinity;
+            for (let id of state.djUnvisited) {
+                const d = state.djDistances.get(id);
+                if (d < nextMin) {
+                    nextMin = d;
+                    next = id;
+                }
+            }
+            state.algoNext = next;
+
+            // если текущая — это целевая, можно завершить заранее
+            if (current === state.dijkstraEnd) {
+                finishDijkstra();
+                return;
+            }
+
+            render();
+        }
+
+        function finishDijkstra() {
+            if (state.algoTimerId) {
+                clearInterval(state.algoTimerId);
+                state.algoTimerId = null;
+            }
+
+            const start = state.dijkstraStart;
+            const end = state.dijkstraEnd;
+
+            // восстановление пути
+            const path = [];
+            let cur = end;
+            while (cur !== null) {
+                path.unshift(cur);
+                cur = state.djPrevious.get(cur);
+            }
+
+            if (path[0] !== start) {
+                alert('Пути не существует');
+            } else {
+                const dist = state.djDistances.get(end);
+                const labels = path.map(id => state.graph.vertices.get(id).label || id);
+                alert(`Кратчайший путь найден!\nДистанция: ${dist}\nПуть: ${labels.join(' → ')}`);
+            }
+
+            state.algoCurrent = null;
+            state.algoNext = null;
+            state.algoMode = 'off';
+            state.algoStepMode = 'off';
+            render();
         }
 
         function openBfsModal() {
@@ -1381,7 +1535,7 @@
             document.getElementById('bfsModal').classList.remove('active');
         }
 
-        function runBFS() {
+        /*function runBFS() {
             const start = document.getElementById('bfsStartVertex').value;
             const visited = new Set();
             const queue = [start];
@@ -1408,6 +1562,78 @@
             alert('BFS обход: ' + pathStr);
             closeBfsModal();
             render();
+        }*/
+
+        function startBfsVisualization() {
+            closeBfsModal();
+            
+            const start = document.getElementById('bfsStartVertex').value;
+            const mode = document.getElementById('bfsModeSelect').value;
+            const delaySec = parseFloat(document.getElementById('bfsDelayInput').value) || 1;
+
+            if (state.algoTimerId) {
+                clearInterval(state.algoTimerId);
+                state.algoTimerId = null;
+            }
+
+            state.algoMode = 'bfs';
+            state.algoStepMode = mode;
+            state.algoDelay = delaySec * 1000;
+
+            state.bfsVisited = new Set();
+            state.bfsOrder = [];
+            state.bfsQueue = [start];
+
+            state.algoCurrent = null;
+            state.algoNext = start;
+
+            //closeBfsModal();
+            render();
+
+            if (mode === 'auto') {
+                state.algoTimerId = setInterval(bfsStep, state.bfsDelay);
+            }
+            // В режиме по пробелу шаги пойдут из обработчика клавиатуры
+        }
+
+        function bfsStep() {
+            if (state.bfsQueue.length === 0) {
+                // Обход закончен
+                if (state.algoTimerId) {
+                    clearInterval(state.algoTimerId);
+                    state.algoTimerId = null;
+                }
+                state.algoCurrent = null;
+                state.algoNext = null;
+                render();
+
+                const labels = state.bfsOrder.map(id => state.graph.vertices.get(id).label || id);
+                alert('BFS порядок: ' + labels.join(' → '));
+
+                state.algoMode = 'off';
+                state.algoStepMode = 'off';
+                return;
+            }
+
+            const current = state.bfsQueue.shift();
+            state.algoCurrent = current;
+            state.bfsVisited.add(current);
+            state.bfsOrder.push(current);
+
+            // Добавляем соседей
+            for (let edge of state.graph.edges) {
+                if (edge.from === current && !state.bfsVisited.has(edge.to) && !state.bfsQueue.includes(edge.to)) {
+                    state.bfsQueue.push(edge.to);
+                } else if (!edge.isDirected && edge.to === current &&
+                        !state.bfsVisited.has(edge.from) && !state.bfsQueue.includes(edge.from)) {
+                    state.bfsQueue.push(edge.from);
+                }
+            }
+
+            // Следующая вершина в очереди (для бледно-розового)
+            state.algoNext = state.bfsQueue.length > 0 ? state.bfsQueue[0] : null;
+
+            render();
         }
 
         function openDfsModal() {
@@ -1433,7 +1659,7 @@
             document.getElementById('dfsModal').classList.remove('active');
         }
 
-        function runDFS() {
+        /*function runDFS() {
             const start = document.getElementById('dfsStartVertex').value;
             const visited = new Set();
             const order = [];
@@ -1459,7 +1685,92 @@
             alert('DFS обход: ' + pathStr);
             closeDfsModal();
             render();
+        }*/
+
+        function startDfsVisualization() {
+            closeDfsModal();
+
+            const start = document.getElementById('dfsStartVertex').value;
+            const mode = document.getElementById('dfsModeSelect').value;
+            const delaySec = parseFloat(document.getElementById('dfsDelayInput').value) || 1;
+
+            if (state.algoTimerId) {
+                clearInterval(state.algoTimerId);
+                state.algoTimerId = null;
+            }
+
+            state.algoMode = 'dfs';
+            state.algoStepMode = mode;
+            state.algoDelay = delaySec * 1000;
+
+            state.dfsVisited = new Set();
+            state.dfsOrder = [];
+            state.dfsStack = [start];
+
+            state.algoCurrent = null;
+            state.algoNext = start;
+
+            //closeDfsModal();
+            render();
+
+            if (mode === 'auto') {
+                state.algoTimerId = setInterval(dfsStep, state.algoDelay);
+            }
         }
+
+        function dfsStep() {
+            if (state.dfsStack.length === 0) {
+                // закончено
+                if (state.algoTimerId) {
+                    clearInterval(state.algoTimerId);
+                    state.algoTimerId = null;
+                }
+                state.algoCurrent = null;
+                state.algoNext = null;
+                render();
+
+                const labels = state.dfsOrder.map(id => state.graph.vertices.get(id).label || id);
+                alert('DFS порядок: ' + labels.join(' → '));
+
+                state.algoMode = 'off';
+                state.algoStepMode = 'off';
+                return;
+            }
+
+            const current = state.dfsStack.pop();
+            if (state.dfsVisited.has(current)) {
+                // ищем следующего кандидата
+                state.algoCurrent = current;
+                state.algoNext = state.dfsStack.length ? state.dfsStack[state.dfsStack.length - 1] : null;
+                render();
+                return;
+            }
+
+            state.dfsVisited.add(current);
+            state.dfsOrder.push(current);
+            state.algoCurrent = current;
+
+            // Добавляем соседей в стек (чтобы порядок был «естественным», можно сортировать)
+            const neighbors = [];
+            for (let edge of state.graph.edges) {
+                if (edge.from === current) {
+                    neighbors.push(edge.to);
+                } else if (!edge.isDirected && edge.to === current) {
+                    neighbors.push(edge.from);
+                }
+            }
+            // добавляем в обратном порядке, чтобы первый в списке был обработан раньше
+            neighbors.reverse().forEach(n => {
+                if (!state.dfsVisited.has(n) && !state.dfsStack.includes(n)) {
+                    state.dfsStack.push(n);
+                }
+            });
+
+            state.algoNext = state.dfsStack.length ? state.dfsStack[state.dfsStack.length - 1] : null;
+
+            render();
+        }
+
 
         // ============ ФАЙЛЫ ============
 
