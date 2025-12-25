@@ -481,6 +481,13 @@ canvas.addEventListener('wheel', (e) => {
 // Свойства элементов
 document.getElementById('vertexLabel').addEventListener('change', (e) => {
     if (state.selectedVertex) {
+        // Проверка уникальности метки
+        for (let [id, vertex] of state.graph.vertices) {
+            if (vertex.label === e.target.value) {
+                alert('Вершина с такой меткой уже существует!');
+                return;
+            }
+        }
         state.graph.vertices.get(state.selectedVertex).label = e.target.value;
         render();
     }
@@ -653,7 +660,7 @@ function startVisualizationMode(label) {
         '#gridLayoutBtn',
         '#treeLayoutBtn',
         '#loadJsonBtn',
-        '#loadMatrixBtn' // если есть
+        '#loadMatrixBtn'
     ];
 
     toDisable.forEach(sel => {
@@ -872,13 +879,13 @@ function closeTreeModal() {
 
 function applyTreeLayout() {
     const rootId = document.getElementById('treeRootVertex').value;
-    closeTreeModal();  // сразу скрываем модалку
+    closeTreeModal();  
 
     if (!state.graph.vertices.has(rootId)) return;
 
     // 1. Строим уровни (BFS по неориентированному графу)
-    const levels = [];                      // levels[depth] = [vertexIds]
-    const levelMap = new Map();            // id -> depth
+    const levels = [];                      
+    const levelMap = new Map();            
     const visited = new Set();
     const queue = [rootId];
 
@@ -906,8 +913,8 @@ function applyTreeLayout() {
     }
 
     // 2. Раскладываем по уровню: корень сверху, дети ниже
-    const levelHeight = 150; // вертикальный шаг между уровнями
-    const nodeSpacing = 120; // горизонтальный шаг между вершинами
+    const levelHeight = 150; 
+    const nodeSpacing = 120; 
 
     levels.forEach((level, depth) => {
         const y = depth * levelHeight;
@@ -925,15 +932,14 @@ function applyTreeLayout() {
         });
     });
 
-    // 3. Для вершин, не достигнутых от корня (если граф несвязный),
-    // просто разложим их под последним уровнем отдельным слоем
+    // 3. Для вершин, не достигнутых от корня
     const notPlaced = [];
     for (let [id] of state.graph.vertices) {
         if (!visited.has(id)) notPlaced.push(id);
     }
 
     if (notPlaced.length > 0) {
-        const depth = levels.length; // следующий уровень
+        const depth = levels.length; 
         const y = depth * levelHeight;
         const totalWidth = (notPlaced.length - 1) * nodeSpacing;
         let x = -totalWidth / 2;
@@ -1020,7 +1026,6 @@ function startDijkstraVisualization() {
     state.algoCurrent = null;
     state.algoNext = start;
 
-    //closeDijkstraModal();
     render();
 
     if (mode === 'auto') {
@@ -1046,7 +1051,6 @@ function dijkstraStep() {
     }
 
     if (current === null || minDist === Infinity) {
-        // оставшиеся недостижимы
         finishDijkstra();
         return;
     }
@@ -1055,7 +1059,6 @@ function dijkstraStep() {
     state.djOrder.push(current);
     state.algoCurrent = current;
 
-    // релаксируем соседей
     for (let edge of state.graph.edges) {
         let neighbor = null;
         if (edge.from === current && state.djUnvisited.has(edge.to)) {
@@ -1085,7 +1088,6 @@ function dijkstraStep() {
     }
     state.algoNext = next;
 
-    // если текущая — это целевая, можно завершить заранее
     if (current === state.dijkstraEnd) {
         finishDijkstra();
         return;
@@ -1315,7 +1317,7 @@ function dfsStep() {
     state.dfsOrder.push(current);
     state.algoCurrent = current;
 
-    // Добавляем соседей в стек (чтобы порядок был «естественным», можно сортировать)
+    // Добавляем соседей в стек 
     const neighbors = [];
     for (let edge of state.graph.edges) {
         if (edge.from === current) {
@@ -1354,7 +1356,7 @@ function findConnectedComponents() {
     const visited = new Set();
     const components = [];
 
-    // Обход (используем BFS/DFS, рассматривая граф как неориентированный) [web:187]
+    // Обход (используем BFS/DFS, рассматривая граф как неориентированный)
     for (const start of vertices) {
         if (visited.has(start)) continue;
         const queue = [start];
@@ -1426,7 +1428,7 @@ function tarjanArticulationAndBridges() {
     let time = 0;
 
     const cutVertices = new Set(); // шарниры
-    const bridges = [];            // список мостов (пары id вершин)
+    const bridges = [];            // список мостов 
 
     function dfs(at, parent = null) {
         visited.add(at);
@@ -1466,7 +1468,7 @@ function tarjanArticulationAndBridges() {
             }
         }
 
-        // корень DFS‑дерева — шарнир, если имеет более одного ребёнка [web:187]
+        // корень DFS‑дерева — шарнир, если имеет более одного ребёнка 
         if (parent === null && children > 1) {
             cutVertices.add(at);
         }
